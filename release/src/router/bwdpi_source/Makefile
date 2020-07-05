@@ -1,11 +1,21 @@
 include ../common.mak
 
-ifeq ($(wildcard $(TOP)/bwdpi_source/prebuild$(BCMEX)$(EX7)/*),)
+ifeq ($(RTCONFIG_QTN),y)
+	QTN = _qtn
+else
+	QTN =
+endif
+
+ifeq ($(wildcard $(TOP)/bwdpi_source/prebuild$(BCMEX)$(EX7)$(QTN)/*),)
 pre_build:
 ifeq ($(RTCONFIG_SOC_IPQ8064),y)
 	@cp include/tdts/sysdeps/ipq806x-tmcfg.h include/tdts/tmcfg.h -f                     # ipq806x
 	@cp include/udb/sysdeps/ipq806x-tmcfg_udb.h include/udb/tmcfg_udb.h -f               # ipq806x
 	@cp bin/ipq806x/* bin/ -rf                                                           # ipq806x
+else ifeq ($(RTCONFIG_SOC_IPQ8074),y)
+	@cp include/tdts/sysdeps/ipq807x-tmcfg.h include/tdts/tmcfg.h -f                     # ipq807x
+	@cp include/udb/sysdeps/ipq807x-tmcfg_udb.h include/udb/tmcfg_udb.h -f               # ipq807x
+	@cp bin/ipq807x/* bin/ -rf                                                           # ipq807x
 else ifeq ($(RTCONFIG_SOC_IPQ40XX),y)
 	@cp include/tdts/sysdeps/dakota-tmcfg.h include/tdts/tmcfg.h -f                      # dakota
 	@cp include/udb/sysdeps/dakota-tmcfg_udb.h include/udb/tmcfg_udb.h -f                # dakota
@@ -32,9 +42,15 @@ ifeq ($(RTCONFIG_BCM7),y)
 	@cp include/udb/sysdeps/bcm7-tmcfg_udb.h include/udb/tmcfg_udb.h -f                  # bcm7
 	@cp bin/bcm7/* bin/ -rf                                                              # bcm7
 else ifeq ($(HND_ROUTER),y)
+ifeq ($(HND_ROUTER_AX),y)
+	@cp include/tdts/sysdeps/axhnd-tmcfg.h include/tdts/tmcfg.h -f                       # ax-hnd
+	@cp include/udb/sysdeps/axhnd-tmcfg_udb.h include/udb/tmcfg_udb.h -f                 # ax-hnd
+	@cp bin/axhnd/* bin/ -rf                                                             # ax-hnd
+else
 	@cp include/tdts/sysdeps/hnd-tmcfg.h include/tdts/tmcfg.h -f                         # hnd
 	@cp include/udb/sysdeps/hnd-tmcfg_udb.h include/udb/tmcfg_udb.h -f                   # hnd
 	@cp bin/hnd/* bin/ -rf                                                               # hnd
+endif
 else ifeq ($(RTCONFIG_BCM_7114),y)
 	@cp include/tdts/sysdeps/bcm7114-tmcfg.h include/tdts/tmcfg.h -f                     # bcm7114
 	@cp include/udb/sysdeps/bcm7114-tmcfg_udb.h include/udb/tmcfg_udb.h -f               # bcm7114
@@ -56,6 +72,9 @@ pre_build:
 ifeq ($(RTCONFIG_SOC_IPQ8064),y)
 	@cp include/tdts/sysdeps/ipq806x-tmcfg.h include/tdts/tmcfg.h -f                     # ipq806x
 	@cp include/udb/sysdeps/ipq806x-tmcfg_udb.h include/udb/tmcfg_udb.h -f               # ipq806x
+else ifeq ($(RTCONFIG_SOC_IPQ8074),y)
+	@cp include/tdts/sysdeps/ipq807x-tmcfg.h include/tdts/tmcfg.h -f                     # ipq807x
+	@cp include/udb/sysdeps/ipq807x-tmcfg_udb.h include/udb/tmcfg_udb.h -f               # ipq807x
 else ifeq ($(RTCONFIG_SOC_IPQ40XX),y)
 	@cp include/tdts/sysdeps/dakota-tmcfg.h include/tdts/tmcfg.h -f                      # dakota
 	@cp include/udb/sysdeps/dakota-tmcfg_udb.h include/udb/tmcfg_udb.h -f                # dakota
@@ -76,8 +95,13 @@ ifeq ($(RTCONFIG_BCM7),y)
 	@cp include/tdts/sysdeps/bcm7-tmcfg.h include/tdts/tmcfg.h -f                        # bcm7
 	@cp include/udb/sysdeps/bcm7-tmcfg_udb.h include/udb/tmcfg_udb.h -f                  # bcm7
 else ifeq ($(HND_ROUTER),y)
+ifeq ($(HND_ROUTER_AX),y)
+	@cp include/tdts/sysdeps/axhnd-tmcfg.h include/tdts/tmcfg.h -f                       # ax-hnd
+	@cp include/udb/sysdeps/axhnd-tmcfg_udb.h include/udb/tmcfg_udb.h -f                 # ax-hnd
+else
 	@cp include/tdts/sysdeps/hnd-tmcfg.h include/tdts/tmcfg.h -f                         # hnd
 	@cp include/udb/sysdeps/hnd-tmcfg_udb.h include/udb/tmcfg_udb.h -f                   # hnd
+endif
 else ifeq ($(RTCONFIG_BCM_7114),y)
 	@cp include/tdts/sysdeps/bcm7114-tmcfg.h include/tdts/tmcfg.h -f                     # bcm7114
 	@cp include/udb/sysdeps/bcm7114-tmcfg_udb.h include/udb/tmcfg_udb.h -f               # bcm7114
@@ -101,7 +125,7 @@ asus_sql_build:
 
 all: pre_build asus_build asus_sql_build
 
-ifeq ($(wildcard $(TOP)/bwdpi_source/prebuild$(BCMEX)$(EX7)/*),)
+ifeq ($(wildcard $(TOP)/bwdpi_source/prebuild$(BCMEX)$(EX7)$(QTN)/*),)
 install: all
 	# asus function here
 	@cd asus/ && $(MAKE) install
@@ -120,6 +144,8 @@ install: all
 	@rm -f RC_INDEP/*.conf
 ifeq ($(RTCONFIG_SOC_IPQ8064),y)
 	@cp -f modules/ipq806x/* RC_INDEP/
+else ifeq ($(RTCONFIG_SOC_IPQ8074),y)
+	@cp -f modules/ipq807x/* RC_INDEP/
 else ifeq ($(RTCONFIG_SOC_IPQ40XX),y)
 	@cp -f modules/dakota/* RC_INDEP/
 else ifeq ($(RTCONFIG_QCA956X),y)
@@ -136,7 +162,11 @@ else ifeq ($(RTCONFIG_BCMARM),y)
 ifeq ($(RTCONFIG_BCM7),y)
 	@cp -f modules/bcm7/* RC_INDEP/
 else ifeq ($(HND_ROUTER),y)
+ifeq ($(HND_ROUTER_AX),y)
+	@cp -f modules/axhnd/* RC_INDEP/
+else
 	@cp -f modules/hnd/* RC_INDEP/
+endif
 else ifeq ($(RTCONFIG_BCM_7114),y)
 	@cp -f modules/bcm7114/* RC_INDEP/
 else
@@ -148,7 +178,7 @@ else
 endif
 endif
 endif
-ifeq ($(HND_ROUTER),y)
+ifeq ($(or $(HND_ROUTER),$(HND_ROUTER_AX)),y)
 	@echo "start to install bwdpi_source into 94908HND"
 	@install -d $(INSTALLDIR)/usr/bwdpi/
 	@cp -f $(TOP)/bwdpi_source/RC_INDEP/*.so $(INSTALLDIR)/usr/lib/
@@ -171,7 +201,7 @@ install:
 	@cd asus_sql/ && $(MAKE) install
 	# [INSTALL] prebuild into RC_INDEP
 	-@mkdir RC_INDEP
-	-@cp -f prebuild$(BCMEX)$(EX7)/* RC_INDEP/
+	-@cp -f prebuild$(BCMEX)$(EX7)$(QTN)/* RC_INDEP/
 ifeq ($(HND_ROUTER),y)
 	@echo "start to install bwdpi_source into 94908HND"
 	@install -d $(INSTALLDIR)/usr/bwdpi/
@@ -190,7 +220,7 @@ ifeq ($(HND_ROUTER),y)
 endif
 endif
 
-ifeq ($(wildcard $(TOP)/bwdpi_source/prebuild$(BCMEX)$(EX7)/*),)
+ifeq ($(wildcard $(TOP)/bwdpi_source/prebuild$(BCMEX)$(EX7)$(QTN)/*),)
 clean:
 	# asus function here
 	@cd asus && $(MAKE) clean

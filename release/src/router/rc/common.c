@@ -287,30 +287,6 @@ void usage_exit(const char *cmd, const char *help)
 	exit(1);
 }
 
-#if 0 // replaced by #define in rc.h
-int modprobe(const char *mod)
-{
-#if 1
-	return eval("modprobe", "-s", (char *)mod);
-#else
-	int r = eval("modprobe", "-s", (char *)mod);
-	cprintf("modprobe %s = %d\n", mod, r);
-	return r;
-#endif
-}
-#endif // 0
-
-int modprobe_r(const char *mod)
-{
-#if 1
-	return eval("modprobe", "-r", (char *)mod);
-#else
-	int r = eval("modprobe", "-r", (char *)mod);
-	cprintf("modprobe -r %s = %d\n", mod, r);
-	return r;
-#endif
-}
-
 #ifndef ct_modprobe
 #ifdef LINUX26
 #define ct_modprobe(mod, args...) ({ \
@@ -849,12 +825,28 @@ void setup_pt_conntrack(void)
 	}
 
 #ifdef LINUX26
+#if defined(BRTAC828)
+	if (!nvram_match("fw_pt_sip", "0")) {
+		if (nvram_get_int("fw_pt_sip_mode") == 1) {
+			ct_modprobe_r("sip");
+			ct_modprobe("cisco_sip");
+		} else {
+			ct_modprobe_r("cisco_sip");
+			ct_modprobe("sip");
+		}
+	}
+	else {
+		ct_modprobe_r("sip");
+		ct_modprobe_r("cisco_sip");
+	}
+#else
 	if (nvram_match("fw_pt_sip", "1")) {
 		ct_modprobe("sip");
 	}
 	else {
 		ct_modprobe_r("sip");
 	}
+#endif
 #endif
 }
 
@@ -866,6 +858,9 @@ void remove_conntrack(void)
 	ct_modprobe_r("h323");
 #ifdef LINUX26
 	ct_modprobe_r("sip");
+#if defined(BRTAC828)
+	ct_modprobe_r("cisco_sip");
+#endif
 #endif
 }
 
@@ -1045,20 +1040,14 @@ void killall_tk_period_wait(const char *name, int wait)
 		}
 	}
 }
-void kill_pidfile_tk(const char *pidfile)
+void kill_pid_tk(pid_t pid)
 {
-	FILE *fp;
-	char buf[256];
-	pid_t pid = 0;
 	int n;
 
-	if ((fp = fopen(pidfile, "r")) != NULL) {
-		if (fgets(buf, sizeof(buf), fp) != NULL)
-			pid = strtoul(buf, NULL, 0);
-		fclose(fp);
-	}
+	if (pid <= 1 && pid >= -1)
+		return;
 
-	if (pid > 1 && kill(pid, SIGTERM) == 0) {
+	if (kill(pid, SIGTERM) == 0) {
 		n = 10;
 		while ((kill(pid, 0) == 0) && (n-- > 0)) {
 			_dprintf("%s: waiting pid=%d n=%d\n", __FUNCTION__, pid, n);
@@ -1071,6 +1060,36 @@ void kill_pidfile_tk(const char *pidfile)
 				usleep(100 * 1000);
 			}
 		}
+	}
+}
+
+void kill_pidfile_tk(const char *pidfile)
+{
+	FILE *fp;
+	char buf[256];
+	pid_t pid = 0;
+
+	if ((fp = fopen(pidfile, "r")) != NULL) {
+		if (fgets(buf, sizeof(buf), fp) != NULL)
+			pid = strtoul(buf, NULL, 0);
+		fclose(fp);
+		kill_pid_tk(pid);
+	}
+}
+
+void kill_pidfile_tk_g(const char *pidfile)
+{
+	FILE *fp;
+	char buf[256];
+	pid_t pid = 0;
+	pid_t pgid;
+
+	if ((fp = fopen(pidfile, "r")) != NULL) {
+		if (fgets(buf, sizeof(buf), fp) != NULL)
+			pid = strtoul(buf, NULL, 0);
+		fclose(fp);
+		pgid = getpgid(pid);
+		kill_pid_tk(-pgid);
 	}
 }
 
@@ -1169,8 +1188,8 @@ const zoneinfo_t tz_list[] = {
 	{"UTC4_2",	"America/Caracas"},	// (GMT-04:00) Caracas
         {"UTC4DST_2",	"America/Santiago"},	// (GMT-04:00) Santiago
         {"NST3.30DST",	"Canada/Newfoundland"},	// (GMT-03:30) Newfoundland
-        {"EBST3DST_1",	"America/Araguaina"},	// (GMT-03:00) Brasilia
-        {"UTC3",	"America/Araguaina"},	// (GMT-03:00) Buenos Aires, Georgetown
+        {"EBST3",	"America/Araguaina"},	// (GMT-03:00) Brasilia //EBST3DST_1
+		{"UTC3",	"America/Araguaina"},	// (GMT-03:00) Buenos Aires, Georgetown
         {"EBST3DST_2",	"America/Godthab"},	// (GMT-03:00) Greenland
         {"UTC2",	"Atlantic/South_Georgia"},	// (GMT-02:00) South Georgia
         {"EUT1DST",     "Atlantic/Azores"},	// (GMT-01:00) Azores
@@ -1200,14 +1219,14 @@ const zoneinfo_t tz_list[] = {
         {"UTC-3_1",     "Asia/Kuwait"},		// (GMT+03:00) Kuwait, Riyadh
         {"UTC-3_2",     "Africa/Nairobi"},	// (GMT+03:00) Nairobi
         {"UTC-3_3",     "Europe/Minsk"},	// (GMT+03:00) Minsk
-        {"UTC-3_4",     "Europe/Moscow"},	// (GMT+03:00) Moscow, St. Petersburg
-        {"UTC-3_5",     "Europe/Volgograd"},	// (GMT+03:00) Volgograd
+        {"UTC-3_4",     "Europe/Moscow"},	// (GMT+03:00) Moscow, St. Petersburg        
         {"IST-3",       "Asia/Baghdad"},	// (GMT+03:00) Baghdad
         {"UTC-3_6",     "Asia/Istanbul"},	// (GMT+03:00) Istanbul
         {"UTC-3.30DST", "Asia/Tehran"},		// (GMT+03:00) Tehran        
         {"UTC-4_1",     "Asia/Muscat"},		// (GMT+04:00) Abu Dhabi, Muscat
         {"UTC-4_5",     "Europe/Samara"},	// (GMT+04:00) Izhevsk, Samara
-        {"UTC-4_4",     "Asia/Tbilisi"},	// (GMT+04:00) Tbilisi, Yerevan
+		{"UTC-4_7",     "Europe/Volgograd"},	// (GMT+03:00) Volgograd	//UTC-3_5
+		{"UTC-4_4",     "Asia/Tbilisi"},	// (GMT+04:00) Tbilisi, Yerevan
         {"UTC-4_6",	"Asia/Baku"},		// (GMT+04:00) Baku
         {"UTC-4.30",    "Asia/Kabul"},		// (GMT+04:30) Kabul
         {"UTC-5",       "Asia/Karachi"},	// (GMT+05:00) Islamabad, Karachi, Tashkent
@@ -1323,7 +1342,13 @@ void time_zone_x_mapping(void)
 	else if (nvram_match("time_zone", "UTC-10_5")){		/*Magadan*/
 		nvram_set("time_zone", "UTC-11_4");
 	}
-
+	else if (nvram_match("time_zone", "EBST3DST_1")){	/*Brasilia*/
+		nvram_set("time_zone", "EBST3");
+		nvram_set("time_zone_dst", "0");
+	}
+	else if (nvram_match("time_zone", "UTC-3_5")){	/*Volgograd*/
+		nvram_set("time_zone", "UTC-4_7");
+	}
 
 	snprintf(tmpstr, sizeof(tmpstr), "%s", nvram_safe_get("time_zone"));
 	/* replace . with : */
@@ -1449,7 +1474,9 @@ int setup_dnsmq(int mode)
 	else {
 		eval("ebtables", "-F");
 		eval("ebtables", "-t", "broute", "-F");
+#ifdef CONFIG_BCMWL5
 		if (is_ure(nvram_get_int("wlc_band")))
+#endif
 		eval("ebtables", "-I", "FORWARD", "-i", nvram_safe_get(wlc_nvname("ifname")), "-j", "DROP");
 	}	
 	
@@ -1605,3 +1632,38 @@ int rand_seed_by_time(void)
 
 	return rand();
 }
+
+#if defined(RTCONFIG_QCA)
+char *get_wpa_supplicant_pidfile(const char *ifname, char *buf, int size)
+{
+	if(ifname == NULL || buf == NULL || size < 24)
+		return "/var/run/wifi-sta0.pid";
+
+	snprintf(buf, size, "/var/run/wifi-%s.pid", ifname);
+	return buf;
+}
+
+void kill_wifi_wpa_supplicant(int unit)
+{
+	int band, end;
+	char buf[32], *pidfile;
+
+	if (unit > MAX_NR_WL_IF)
+		return;
+	else if (unit < 0) {
+		band = 0;
+		end = MAX_NR_WL_IF;
+	}
+	else {
+		band = end = unit;
+	}
+	for(; band < end; band++) {
+		const char *ifname = get_staifname(band);
+		pidfile = get_wpa_supplicant_pidfile(ifname, buf, sizeof(buf));
+		kill_pidfile_tk(pidfile);
+		unlink(pidfile);
+		doSystem("ifconfig %s down", ifname);
+	}
+}
+#endif	/* RTCONFIG_QCA */
+

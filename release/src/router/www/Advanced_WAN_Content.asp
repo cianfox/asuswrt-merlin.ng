@@ -27,6 +27,10 @@
 
 var wans_dualwan = '<% nvram_get("wans_dualwan"); %>';
 var nowWAN = '<% get_parameter("flag"); %>';
+var original_switch_wantag = '<% nvram_get("switch_wantag"); %>';
+var original_switch_stb_x = '<% nvram_get("switch_stb_x"); %>';
+var original_wan_dot1q = '<% nvram_get("wan_dot1q"); %>';
+var original_wan_vid = '<% nvram_get("wan_vid"); %>';
 
 if(dualWAN_support && ( wans_dualwan.search("wan") >= 0 || wans_dualwan.search("lan") >= 0)){
 	var wan_type_name = wans_dualwan.split(" ")[<% nvram_get("wan_unit"); %>].toUpperCase();
@@ -95,7 +99,7 @@ function initial(){
 	
 	show_menu();
 	// https://www.asus.com/support/FAQ/1011715/
-	httpApi.faqURL("faq", "1011715", "https://www.asus.com", "/support/FAQ/");
+	httpApi.faqURL("1011715", function(url){document.getElementById("faq").href=url;});
 	change_wan_type(document.form.wan_proto.value, 0);	
 	fixed_change_wan_type(document.form.wan_proto.value);
 	genWANSoption();
@@ -152,6 +156,20 @@ function initial(){
 		showhide("dot1q_setting",1);
 	else
 		showhide("dot1q_setting",0);
+
+	if(productid == "BRT-AC828" || productid == "RT-AD7200"){      //MODELDEP: BRT-AC828, RT-AD7200
+		var wan_type_name = wans_dualwan.split(" ")[<% nvram_get("wan_unit"); %>].toUpperCase();
+		if((original_switch_wantag == "none" && original_switch_stb_x != "0") ||
+		   (original_switch_wantag != "none") || (wan_type_name != "WAN" && wan_type_name != "WAN2")){
+			document.form.wan_dot1q.value = "0";
+			showhide("wan_dot1q_setting",0);
+		}else{
+			showhide("wan_dot1q_setting",1);
+		}
+	}else{
+		document.form.wan_dot1q.value = "0";
+		showhide("wan_dot1q_setting",0);
+	}
 }
 
 function change_notusb_unit(){
@@ -227,8 +245,15 @@ function genWANSoption(){
 		else if(wans_dualwan_NAME == "USB" && (based_modelid == "4G-AC53U" || based_modelid == "4G-AC55U" || based_modelid == "4G-AC68U"))
 			wans_dualwan_NAME = "<#Mobile_title#>";                       
 		document.form.wan_unit.options[i] = new Option(wans_dualwan_NAME, i);
-	}	
-	
+
+		if(based_modelid == "GT-AXY16000" || based_modelid == "RT-AX89U"){
+			if(wans_dualwan_NAME == "WAN2")
+				document.form.wan_unit.options[i] = new Option("10G base-T", i);
+			else if(wans_dualwan_NAME == "SFP+")
+				document.form.wan_unit.options[i] = new Option("10G SFP+", i);
+		}
+	}
+
 	document.form.wan_unit.selectedIndex = '<% nvram_get("wan_unit"); %>';
 	if(wans_dualwan.search(" ") < 0 || wans_dualwan.split(" ")[1] == 'none' || !dualWAN_support)
 		document.getElementById("WANscap").style.display = "none";
@@ -251,6 +276,15 @@ function applyRule(){
 		document.form.ewan_dot1q[1].disabled = true;
 		document.form.ewan_vid.disabled = true;
 		document.form.ewan_dot1p.disabled = true;
+	}
+
+	if(productid == "BRT-AC828" || productid == "RT-AD7200"){	//MODELDEP: BRT-AC828,RT-AD7200
+		if(original_wan_dot1q != document.form.wan_dot1q.value || original_wan_vid != document.form.wan_vid.value)
+			FormActions("start_apply.htm", "apply", "reboot", "<% get_default_reboot_time(); %>");
+	}else{
+		document.form.wan_dot1q[0].disabled = true;
+		document.form.wan_dot1q[1].disabled = true;
+		document.form.wan_vid.disabled = true;
 	}
 
 	if(validForm()){
@@ -536,7 +570,7 @@ function validForm(){
 	}	
 	
 	if(document.form.wan_hwaddr_x.value.length > 0)
-			if(!check_macaddr(document.form.wan_hwaddr_x,check_hwaddr_flag(document.form.wan_hwaddr_x))){
+			if(!check_macaddr(document.form.wan_hwaddr_x,check_hwaddr_flag(document.form.wan_hwaddr_x,'inner'))){
 					document.form.wan_hwaddr_x.select();
 					document.form.wan_hwaddr_x.focus();
 		 	return false;
@@ -1277,6 +1311,23 @@ function change_wizard(o, id){
 						</tr>
 						</table>
 
+						<table id="wan_dot1q_setting" width="100%" border="1" align="center" cellpadding="4" cellspacing="0" bordercolor="#6b8fa3" class="FormTable">
+						<thead><tr><td colspan="2">802.1Q</td></tr></thead>
+						<tr>
+							<th><#WLANConfig11b_WirelessCtrl_button1name#></th>
+							<td>
+								<input type="radio" name="wan_dot1q" class="input" value="1" onclick="return change_common_radio(this, 'IPConnection', 'wan_dot1q', 1);" <% nvram_match("wan_dot1q", "1", "checked"); %>><#checkbox_Yes#>
+								<input type="radio" name="wan_dot1q" class="input" value="0" onclick="return change_common_radio(this, 'IPConnection', 'wan_dot1q', 0);" <% nvram_match("wan_dot1q", "0", "checked"); %>><#checkbox_No#>
+							</td>
+						</tr>
+						<tr>
+							<th>VLAN ID</th>
+							<td>
+								<input type="text" name="wan_vid" maxlength="4" class="input_6_table" value="<% nvram_get("wan_vid"); %>" onKeyPress="return validator.isNumber(this,event);"> ( 2 ~ 4094 )
+							</td>
+						</tr>
+						</table>
+
 						<table id="IPsetting" width="100%" border="1" align="center" cellpadding="4" cellspacing="0" bordercolor="#6b8fa3" class="FormTable">
 							<thead>
 							<tr>
@@ -1567,6 +1618,7 @@ function change_wizard(o, id){
 		<select name="dhcpc_mode" class="input_option">
 			<option value="0" <% nvram_match(" dhcpc_mode", "0","selected"); %>><#DHCPnormal#></option>
 			<option value="1" <% nvram_match(" dhcpc_mode", "1","selected"); %>><#DHCPaggressive#></option>
+			<option value="2" <% nvram_match(" dhcpc_mode", "2","selected"); %>><#Continuous_Mode#></option>
 		</select>
 		</td>
 		</tr>
@@ -1581,7 +1633,7 @@ function change_wizard(o, id){
 		</tr>
 
 		<tr>
-			<th><a class="hintstyle" href="javascript:void(0);" onClick=""><#Extend_TTL_Value#></a></th>
+			<th><#Extend_TTL_Value#></th>
 				<td>
 					<input type="radio" name="ttl_inc_enable" class="input" value="1" <% nvram_match("ttl_inc_enable", "1", "checked"); %>><#checkbox_Yes#>
 					<input type="radio" name="ttl_inc_enable" class="input" value="0" <% nvram_match("ttl_inc_enable", "0", "checked"); %>><#checkbox_No#>

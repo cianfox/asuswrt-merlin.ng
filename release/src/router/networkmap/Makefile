@@ -65,6 +65,7 @@ endif
 
 LDFLAGS += -lm -L$(TOP)/shared -lshared -L$(TOP)/nvram${BCMEX} -lnvram -L$(TOP)/json-c/.libs -ljson-c
 LDFLAGS += -L$(TOP)/shared -lshared -L$(TOP)/nvram${BCMEX}${EX7} -lnvram 
+
 ifeq ($(HND_ROUTER),y)
 LDFLAGS += -L$(TOP)/wlcsm -lwlcsm
 endif
@@ -107,19 +108,24 @@ ifeq ($(HND_ROUTER),y)
 CFLAGS += -DHND_ROUTER
 endif
 
+ifeq ($(RTCONFIG_QTN),y)
+	QTN = _qtn
+else
+	QTN =
+endif
 ifneq ($(AC2900),y)
 ifeq ($(wildcard $(SRCBASE)/router/networkmap/*.c),)
 all: 
-	-cp -f prebuild$(BCMEX)$(EX7)/networkmap networkmap
-	-cp -f prebuild$(BCMEX)$(EX7)/asusdiscovery asusdiscovery
-	-cp -f prebuild$(BCMEX)$(EX7)/arpstorm arpstorm
+	-cp -f prebuild$(BCMEX)$(EX7)$(QTN)/networkmap networkmap
+	-cp -f prebuild$(BCMEX)$(EX7)$(QTN)/asusdiscovery asusdiscovery
+	-cp -f prebuild$(BCMEX)$(EX7)$(QTN)/arpstorm arpstorm
 else
 all: $(EXEC) asusdiscovery arpstorm
 endif
 else
 ifeq ($(wildcard $(SRCBASE)/router/networkmap/*.c),)
 all: 
-	-cp -f prebuild$(BCMEX)$(EX7)/networkmap networkmap
+	-cp -f prebuild$(BCMEX)$(EX7)$(QTN)/networkmap networkmap
 else
 all: $(EXEC)
 endif

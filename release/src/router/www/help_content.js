@@ -74,7 +74,7 @@ helpcontent[3] = new Array("",
 							"<#WLANConfig11b_x_roamingassit_desc#>",	//31
 							"<#WLANConfig11b_x_Airtime_Fairness_itemdesc#>",
 							"<#WLANConfig11b_x_Auto#>",
-							"Enable/Disable Bluetooth Coexisistence. Data rate 1Mbps and 2 Mbps are not allowed in Pre-emptive mode. TX Bursting is also not allowed in Pre-emptive mode."
+							"<#WLANConfig11b_x_BTCoexistence_itemdesc#>"
 							 );
 
 helpcontent[4] = new Array("",
@@ -179,7 +179,8 @@ helpcontent[11] = new Array("",
 							"<#LANHostConfig_x_TimeZone_DSTEnd_desc#>",
 							"For destination IP address, you can:<br/>(a) enter a specific IP address, such as \"192.168.1.2\"<br/>(b) enter IP addresses within one subnet or within the same IP pool, such as \"192.168.1.0/24\"",	/* untranslated */
 							"<#System_Allow_Specified_IP#>",
-							"<#usb_HDD_Hibernation_Desc#>");
+							"<#usb_HDD_Hibernation_Desc#>",
+							"If there is no client connection for more than 1 minute, the PLC will enter sleep mode (power saving). The PLC will not wake up until the client connects. (It takes about ten seconds to wake up the PLC)");	/* untranslated */
 //Log
 helpcontent[12] = new Array("",
 							"<#General_x_SystemUpTime_itemdesc#>",
@@ -229,7 +230,9 @@ helpcontent[18] = new Array("",
 helpcontent[19] = new Array("",
 							"<#Setting_factorydefault_itemdesc#>",
 							"<#Setting_save_itemdesc#>",
-							"<#Setting_upload_itemdesc#>");
+							"<#Setting_upload_itemdesc#>",
+							"<#Setting_factorydefault_itemdesc_dpi#>"
+							);
 // QoS
 helpcontent[20] = new Array("",
 							"",
@@ -384,7 +387,8 @@ helpcontent[33] = new Array("",
 
 //Feedback
 helpcontent[34] = new Array("",
-							"This feature allows system to capture diagnostic System debug log in the background, duration depends on the “Diagnostic debug log capture duration” option, depends on the option selected, system might transmit single debug log automatically to ASUS Support Team for analysis after capture completed or transmit multiple debug logs over a period of time. Click on the yellow System icon could cancel the debug log capture."/*untranslated*/
+							"This feature allows system to capture diagnostic System debug log in the background, duration depends on the “Diagnostic debug log capture duration” option, depends on the option selected, system might transmit single debug log automatically to ASUS Support Team for analysis after capture completed or transmit multiple debug logs over a period of time. Click on the yellow System icon could cancel the debug log capture.",/*untranslated*/
+							"<#Feedback_case_No_desc#>"
 							);
 
 helpcontent[50] = new Array("",

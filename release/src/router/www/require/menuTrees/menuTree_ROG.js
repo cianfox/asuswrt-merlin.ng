@@ -43,7 +43,7 @@ define(function(){
 				]
 			}, 
 			{
-				menuName: "Game IPS",
+				menuName: "<#AiProtection_title#>",
 				index: "menu_AiProtection", 
 				tab: [
 					{url: "AiProtection_HomeSecurity.asp", tabName: "__HIDE__"},
@@ -60,39 +60,34 @@ define(function(){
 				] 
 			},
 			{
-				menuName: "<#Game_Boost#>",
+				menuName: "<#Game_acceleration#>",
 				index: "menu_GameBoost",
 				tab: [
-					{url: "GameBoost_ROG.asp", tabName: "<#Game_Boost#>"},
+					{url: "GameBoost.asp", tabName: "<#Game_acceleration#>"},
 					{url: "QoS_EZQoS.asp", tabName: "<#menu5_3_2#>"},
-					{url: "AdaptiveQoS_WebHistory.asp", tabName: "<#Adaptive_History#>"},
-					{url: "Main_Spectrum_Content.asp", tabName: "<#Spectrum_title#>"},
+					//{url: "AdaptiveQoS_WebHistory.asp", tabName: "<#Adaptive_History#>"},
+					//{url: "Main_Spectrum_Content.asp", tabName: "<#Spectrum_title#>"},
 					{url: "Advanced_QOSUserPrio_Content.asp", tabName: "__INHERIT__"},
 					{url: "Advanced_QOSUserRules_Content.asp", tabName: "__INHERIT__"},
-					{url: "AdaptiveQoS_Adaptive.asp", tabName: "__INHERIT__"},
+					{url: "Advanced_WTFast_Content.asp", tabName: "WTFast"},
+					{url: "GearAccelerator.asp", tabName: "Gear Accelerator"},
+					//{url: "AdaptiveQoS_Adaptive.asp", tabName: "__INHERIT__"},
 					{url: "NULL", tabName: "__INHERIT__"}
 				] 
 			},
 			{
-				menuName: "Game Private Network",
-				index: "menu_Wtfast",
-				tab: [
-					{url: "Advanced_WTFast_Content.asp", tabName: "<#Game_Boost#>"},
-					{url: "NULL", tabName: "__INHERIT__"}
-				] 
-			},			{
-				menuName: "<#Game_Profile#>",
+				menuName: "Open NAT",
 				index: "menu_GameProfile", 
 				tab: [
-					{url: "GameProfile.asp", tabName: "<#Game_Profile#>"},
+					{url: "GameProfile.asp", tabName: "Open NAT"},
 					{url: "NULL", tabName: "__INHERIT__"}
 				] 
 			},
 			{
-				menuName: "Game Radar",
+				menuName: "<#AiProtection_title_Radar#>",
 				index: "menu_GameRadar", 
 				tab: [
-					{url: "Main_GameServer_Content.asp", tabName: "Game Radar"},
+					{url: "Main_GameServer_Content.asp", tabName: "<#AiProtection_title_Radar#>"},
 					{url: "NULL", tabName: "__INHERIT__"}
 				] 
 			},
@@ -121,10 +116,12 @@ define(function(){
 				index: "menu_TrafficAnalyzer", 
 				tab: [
 					{url: "TrafficAnalyzer_Statistic.asp", tabName: "<#Statistic#>"},
+					{url: "AdaptiveQoS_Bandwidth_Monitor.asp", tabName: "<#Bandwidth_monitor#>"},
 					{url: "Main_TrafficMonitor_realtime.asp", tabName: "<#traffic_monitor#>"},
 					{url: "Main_TrafficMonitor_last24.asp", tabName: "__INHERIT__"},
 					{url: "Main_TrafficMonitor_daily.asp", tabName: "__INHERIT__"},
 					{url: "AdaptiveQoS_TrafficLimiter.asp", tabName: "Traffic Limiter"},
+					{url: "AdaptiveQoS_WebHistory.asp", tabName: "<#Adaptive_History#>"},
 					{url: "NULL", tabName: "__INHERIT__"}
 				] 
 			},
@@ -157,7 +154,7 @@ define(function(){
 					{url: "Advanced_WSecurity_Content.asp", tabName: "<#menu5_1_5#>"},
 					{url: "Advanced_WAdvanced_Content.asp", tabName: "<#menu5_1_6#>"},
 					{url: "Advanced_WProxy_Content.asp", tabName: "<#WiFi_Proxy_item#>"},
-					{url: "Advanced_Roaming_Block_Content.asp", tabName: "Roaming Block List"},/* untranslated */
+					{url: "Advanced_Roaming_Block_Content.asp", tabName: "<#WiFi_Roaming_Block_List#>"},
 					{url: "NULL", tabName: "__INHERIT__"}
 				] 
 			},
@@ -214,6 +211,7 @@ define(function(){
 					{url: "PrinterServer.asp", tabName: "__INHERIT__"},
 					{url: "Advanced_Modem_Content.asp", tabName: "__INHERIT__"},
 					{url: "Advanced_TimeMachine.asp", tabName: "__INHERIT__"},
+					{url: "fileflex.asp", tabName: "__INHERIT__"},
 					{url: "NULL", tabName: "__INHERIT__"}
 				] 
 			},
@@ -266,9 +264,10 @@ define(function(){
 					{url: "Advanced_System_Content.asp", tabName: "<#menu5_6_2#>"},
 					{url: "Advanced_FirmwareUpgrade_Content.asp", tabName: "<#menu5_6_3#>"},
 					{url: "Advanced_SettingBackup_Content.asp", tabName: "<#menu5_6_4#>"},
-					{url: "Advanced_PerformanceTuning_Content.asp", tabName: "Performance tuning"},
+					{url: "Advanced_PerformanceTuning_Content.asp", tabName: "Fan tuning"},
 					{url: "Advanced_ADSL_Content.asp", tabName: "<#menu_dsl_setting#>"},
 					{url: "Advanced_Feedback.asp", tabName: "<#menu_feedback#>"},
+					{url: "Feedback_Info.asp", tabName: "__INHERIT__"},
 					{url: "Advanced_SNMP_Content.asp", tabName: "SNMP"},
 					{url: "Advanced_TR069_Content.asp", tabName: "TR-069"},
 					{url: "Advanced_Notification_Content.asp", tabName: "Notification"},
@@ -309,11 +308,7 @@ define(function(){
 			menus: function(){
 				var retArray = [];
 
-				if(multissid_support == -1){
-					retArray.push("menu_GuestNetwork");
-				}
-
-				if(multissid_support == -1){
+				if(!multissid_support){
 					retArray.push("menu_GuestNetwork");
 				}
 
@@ -372,7 +367,7 @@ define(function(){
 					retArray.push("menu_VLAN");
 					retArray.push("menu_Firewall");
 
-					if(userRSSI_support){
+					if(!userRSSI_support){
 						retArray.push("menu_Wireless");
 					}
 
@@ -409,6 +404,7 @@ define(function(){
 					retArray.push("menu_AccessControl");
 					retArray.push("menu_Wtfast");
 					retArray.push("menu_GameProfile");
+					retArray.push("menu_WifiRadar");
 					retArray.push("menu_TrafficAnalyzer");
 					retArray.push("menu_QoS");
 					retArray.push("menu_BandwidthMonitor");
@@ -482,8 +478,9 @@ define(function(){
 					retArray.push("YandexDNS.asp");
 				}
 
-				if(!feedback_support) {		
+				if(!frs_feedback_support) {		
 					retArray.push("Advanced_Feedback.asp");
+					retArray.push("Feedback_Info.asp");
 				}
 
 				if(noftp_support){
@@ -617,6 +614,17 @@ define(function(){
 
 				if(!amesh_support)
 					retArray.push("Advanced_Roaming_Block_Content.asp");
+				else{
+					if(ameshRouter_support){
+						if(!isSwMode("rt") && !isSwMode("ap"))
+							retArray.push("Advanced_Roaming_Block_Content.asp");
+					}
+					else if(ameshNode_support)
+						retArray.push("Advanced_Roaming_Block_Content.asp");
+				}
+
+				if(!fileflex_support)
+					retArray.push("fileflex.asp");
 
 				/* Operation Mode */
 				if(isSwMode("re")){
@@ -679,9 +687,6 @@ define(function(){
 					retArray.push("Main_ConnStatus_Content.asp");
 					retArray.push("Advanced_Smart_Connect.asp");
 				}
-
-				if(amesh_support && (!isSwMode("rt") && !isSwMode("ap")))
-					retArray.push("Advanced_Roaming_Block_Content.asp");
 
 				/* System Status Changed */
 				// --

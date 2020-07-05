@@ -17,6 +17,7 @@ NT_CENTER_DIR=$(TOP)/nt_center
 ifeq ($(RTCONFIG_SW_HW_AUTH),y)
 SW_HW_AUTH_DIR=$(TOP)/sw-hw-auth
 endif
+SQLITE_DIR=$(TOP)/sqlite
 
 NATNL_DIR=$(TOP)/asusnatnl/natnl
 ASUSNATNL_CFLAGS=-I$(NATNL_DIR)
@@ -51,6 +52,12 @@ else
 ROUTER_LIBS=-lnvram -lshared
 ROUTER_LDFLAGS=-L$(NVRAM_DIR) -L$(SHARED_DIR)
 endif
+ifeq ($(RTCONFIG_NOTIFICATION_CENTER),y)
+ROUTER_LIBS += -lsqlite3
+ROUTER_LDFLAGS += -L$(SQLITE_DIR)/.libs
+ROUTER_LIBS += -lnt
+ROUTER_LDFLAGS += -L$(NT_CENTER_DIR)/lib
+endif
 endif
 
 CFLAGS += -g
@@ -77,7 +84,7 @@ CFLAGS += $(ASUSNATNL_CFLAGS)
 CFLAGS += $(AICAM_CFLAGS)
 CFLAGS += $(ROUTER_CFLAGS)
 
-LIBS = -lcurl -lssl -lcrypto -lxml2 -ljson-c -ldl -pthread -lrt $(ROUTER_LIBS) -lws
+LIBS = -lcurl -lssl -lcrypto -lxml2 -ljson-c -ldl -pthread -lrt $(ROUTER_LIBS) -lws -lgcc_s
 LDFLAGS = -L$(OPENSSL_DIR) -L$(CURL_DIR)/lib/.libs -L$(XML2_DIR)/.libs -L$(JSON_C_DIR)/.libs -L. $(ROUTER_LDFLAGS) -L$(WS_SRC) -L$(WB_DIR) -L$(WB_DIR)/output
 ifeq ($(RTCONFIG_QCA),y)
 LDFLAGS += -L$(LIBDIR) -lm
@@ -85,7 +92,7 @@ endif
 
 ifeq ($(HND_ROUTER),y)
 CFLAGS += -DPTHREAD_STACK_SIZE=0x51200
-LDFLAGS += -L$(TOP)/wlcsm -lwlcsm -lgcc_s
+LDFLAGS += -L$(TOP)/wlcsm -lwlcsm
 endif
 
 ifeq ($(RTCONFIG_BCMARM),y)
@@ -110,7 +117,7 @@ ifeq ($(wildcard $(TOP)/aaews/*.c),)
 router:
 	-cp -f $(TOP)/aaews/prebuild$(BCMEX)$(EXHND)/aaews aaews
 else
-router: $(WSLIB) $(TARGET)
+router: $(WSLIB) $(TARGET) $(DOG)
 endif
 $(WSLIB):
 	cd $(WB_DIR) && \

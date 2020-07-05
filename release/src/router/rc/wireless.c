@@ -161,8 +161,9 @@ int wlcscan_main(void)
 	CLIENT *clnt;
 	char host[18];
 #endif
-#if defined(RTCONFIG_BCM7) || defined(RTCONFIG_BCM_7114) || defined(HND_ROUTER)
+#ifdef __CONFIG_DHDAP__
 	char tmp[100], prefix[]="wlXXXXXXX_";
+	int is_dhd = 0;
 #endif
 
 	signal(SIGTERM, wlcscan_safeleave);
@@ -205,9 +206,10 @@ int wlcscan_main(void)
 #endif
 	{	
 		SKIP_ABSENT_BAND_AND_INC_UNIT(i);
-#if defined(RTCONFIG_BCM7) || defined(RTCONFIG_BCM_7114) || defined(HND_ROUTER)
+#ifdef __CONFIG_DHDAP__
+		is_dhd = !dhd_probe(word);
 		snprintf(prefix, sizeof(prefix), "wl%d_", i);
-		if (!nvram_match(strcat_r(prefix, "mode", tmp), "wds"))
+		if (is_dhd && !nvram_match(strcat_r(prefix, "mode", tmp), "wds"))
 			wlcscan_core_escan(APSCAN_INFO, word);
 		else
 #endif
@@ -255,7 +257,7 @@ static void wlcconnect_safeleave(int signo) {
 int wlcconnect_main(void)
 {
 _dprintf("%s: Start to run...\n", __FUNCTION__);
-	int ret, old_ret = -1;
+	int ret, old_ret = -1, sleep_s = 0, sleep_us = 0;
 	int link_setup = 0, wlc_count = 0;
 	int wanduck_notify = NOTIFY_IDLE;
 	int wlc_wait_time = nvram_get_int("wl_time") ? : 5;
@@ -264,6 +266,7 @@ _dprintf("%s: Start to run...\n", __FUNCTION__);
 	char *led_gpio = get_wl_led_gpio_nv(unit);
 #endif
 
+	_dprintf("%s: Start to run...\n", __FUNCTION__);
 	signal(SIGTERM, wlcconnect_safeleave);
 
 	nvram_set_int("wlc_state", WLC_STATE_INITIALIZING);
@@ -272,6 +275,17 @@ _dprintf("%s: Start to run...\n", __FUNCTION__);
 
 #ifdef RTCONFIG_LANTIQ
 	start_repeater();
+#endif
+
+#if defined(RPAC51)
+	sleep_us = 500;
+#elif defined(RTCONFIG_RALINK)
+	sleep_s = 1;
+#elif defined(RTCONFIG_QCA)
+	if (mediabridge_mode())
+		sleep_s = 20;
+	else
+		sleep_s = 5;
 #endif
 
 	while (1) {
@@ -296,22 +310,10 @@ _dprintf("%s: Start to run...\n", __FUNCTION__);
 				if(wlc_count < 3){
 					wlc_count++;
 _dprintf("Ready to disconnect...%d.\n", wlc_count);
-#ifdef RTCONFIG_RALINK
-					sleep(1);
-#else
-#ifdef RTCONFIG_QCA
-#ifdef RTCONFIG_PROXYSTA
-					if (mediabridge_mode())
-						sleep(10);
-					else
-#endif
-#endif
-#if defined(RPAC51)
-					usleep(500);
-#else
-					sleep(5);
-#endif
-#endif
+					if (sleep_s > 0)
+						sleep(sleep_s);
+					if (sleep_us > 0)
+						usleep(sleep_us);
 					continue;
 				}
 			}
@@ -376,13 +378,18 @@ _dprintf("Ready to disconnect...%d.\n", wlc_count);
 void repeater_pap_disable(void)
 {
 	char word[256], *next;
+	int wlc_band = nvram_get_int("wlc_band");
 	int i;
 
 	i = 0;
 
 	foreach(word, nvram_safe_get("wl_ifnames"), next) {
 		SKIP_ABSENT_BAND_AND_INC_UNIT(i);
-		if (nvram_get_int("wlc_band") == i) {
+#if defined(RTCONFIG_REPEATER_STAALLBAND)
+		if (i != WL_60G_BAND) {
+#else
+		if (wlc_band == i) {
+#endif
 			eval("ebtables", "-t", "filter", "-I", "FORWARD", "-i", word, "-j", "DROP");
 			break;
 		}

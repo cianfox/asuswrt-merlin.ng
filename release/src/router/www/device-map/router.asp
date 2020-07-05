@@ -13,6 +13,8 @@
 <script type="text/javascript" src="/general.js"></script>
 <script type="text/javascript" src="/state.js"></script>
 <script type="text/javascript" src="/js/jquery.js"></script>
+<script type="text/javascript" src="/validator.js"></script>
+<script type="text/javascript" src="/switcherplugin/jquery.iphone-switch.js"></script>
 <style>
 .cancel{
 	border: 2px solid #898989;
@@ -112,6 +114,11 @@
 }
 
 #slider .ui-slider-handle { border-color: #3367d6; }	
+.dwb_hint {
+	color:#FC0;
+	margin-left:5px;
+	font-size:13px;
+}
 </style>
 <script>
 if(parent.location.pathname !== '<% abs_networkmap_page(); %>' && parent.location.pathname !== "/") top.location.href = "../"+'<% networkmap_page(); %>';
@@ -123,7 +130,7 @@ $(function () {
 			.attr('src', _src)
 			.appendTo('head');
 	};
-	if(parent.amesh_support && (parent.isSwMode("rt") || parent.isSwMode("ap")))
+	if(parent.amesh_support && (parent.isSwMode("rt") || parent.isSwMode("ap")) && parent.ameshRouter_support)
 		dynamic_include_js('/require/modules/amesh.js');
 	if(parent.smart_connect_support && (parent.isSwMode("rt") || parent.isSwMode("ap")))
 		dynamic_include_js('/switcherplugin/jquery.iphone-switch.js');
@@ -145,6 +152,7 @@ var color_table = ["#c6dafc", "#7baaf7", "#4285f4", "#3367d6"];
 var led_table = ["Off", "Low", "Medium", "Highest"];
 function initial(){
 	var wl_subunit = '<% nvram_get("wl_subunit"); %>';
+
 	if(parent.lantiq_support){
 		$("#led_tr").show();
 		checkWLReady();
@@ -171,13 +179,11 @@ function initial(){
 		$("#slider .ui-slider-handle").css("border-color", color_table[led.bc_ledLv]);
 	}
 
-	if(parent.lyra_hide_support){
+	if(wifison_ready == "1" && parent.sw_mode == "1"){
 		document.getElementById("t0").style.display = "";
 		document.getElementById("span0").innerHTML = "<#tm_wireless#>";
 		document.getElementById("t0").className = "tabclick_NW";
-		inputCtrl(document.form.wl_auth_mode_x, 0);
 		document.getElementById("wl_wpa_psk_title").innerHTML = "<#Network_key#>";
-		document.getElementById("t_status").style.display = "none";
 		document.getElementById("t3").style.display = "none";
 		document.getElementById("pincode").style.display = "none";
 	}
@@ -206,6 +212,7 @@ function initial(){
 			document.getElementById("t0").style.display = "";
 		}
 	}
+
 	if(parent.sw_mode == 2){
 		if(parent.wlc_express != 0){
 			if(parent.wlc_express == 1){
@@ -263,14 +270,19 @@ function initial(){
 	if(parent.smart_connect_support && (parent.isSwMode("rt") || parent.isSwMode("ap"))){
 		var value = new Array();
 		var desc = new Array();
-
-		if(wl_info.band2g_support && wl_info.band5g_support && wl_info.band5g_2_support){
-			desc = ["none", "Tri-Band Smart Connect", "5GHz Smart Connect"];
-			value = ["0", "1", "2"];
-		}
-		else if(wl_info.band2g_support && wl_info.band5g_support){
+		if(isSupport("triband") && dwb_info.mode) {
 			desc = ["none", "Dual-Band Smart Connect"];
 			value = ["0", "1"];
+		}
+		else {
+			if(wl_info.band2g_support && wl_info.band5g_support && wl_info.band5g_2_support){
+				desc = ["none", "Tri-Band Smart Connect", "5GHz Smart Connect"];
+				value = ["0", "1", "2"];
+			}
+			else if(wl_info.band2g_support && wl_info.band5g_support){
+				desc = ["none", "Dual-Band Smart Connect"];
+				value = ["0", "1"];
+			}
 		}
 		add_options_x2(document.form.smart_connect_t, desc, value, document.form.smart_connect_x.value);
 
@@ -278,7 +290,7 @@ function initial(){
 			document.getElementById("smart_connect_field").style.display = '';
 	}
 
-	if(!parent.lyra_hide_support)
+	if(wifison_ready != "1" || parent.sw_mode != "1")
 		change_tabclick();
 
 	document.form.wl_ssid.value = decodeURIComponent('<% nvram_char_to_ascii("", "wl_ssid"); %>');
@@ -348,6 +360,27 @@ function initial(){
 			}
 		}, 10);
 	}
+
+	$("#tr_dwb_info").css("display", "none");
+	if(isSupport("triband") && dwb_info.mode) {
+		if(dwb_info.band == wl_unit) {
+			$("#tr_wl_info").css("display", "none");
+			$("#apply_tr").css("display", "none");
+			$("#tr_dwb_info").css("display", "");
+			var dwb_hint = "";
+			dwb_hint += wl_nband_title[wl_unit];
+			dwb_hint += " is now used as dedicated WiFi backhaul under AiMesh mode.";
+			dwb_hint += "<br><br>";
+			dwb_hint += "If you want to change wireless settings, please go to <span id='redirect_link'>here</span>.";/* untranslated */
+			$("#tr_dwb_info").find(".dwb_hint").html(dwb_hint);
+			$("#tr_dwb_info").find(".dwb_hint #redirect_link").css({"text-decoration":"underline", "cursor":"pointer"});
+			$("#tr_dwb_info").find(".dwb_hint #redirect_link").click(function(){
+				parent.document.titleForm.current_page.value = "Advanced_Wireless_Content.asp";
+				parent.document.titleForm.next_page.value = "Advanced_Wireless_Content.asp";
+				parent.change_wl_unit_status(2);
+			});
+		}
+	}
 }
 
 function register_event(){
@@ -389,6 +422,9 @@ function tabclickhandler(wl_unit){
 	if(wl_unit == 'status'){
 		location.href = "router_status.asp";
 	}
+	/*else if (wl_unit == "compatibility") {
+		location.href = "compatibility.asp";
+	}*/
 	else{
 		if(parent.sw_mode == 2 && parent.wlc_express != 0){
 			document.form.wl_subunit.value = 1;
@@ -445,15 +481,13 @@ function change_wpa_type(mode){
 	var new_array;
 	var cur_crypto;
 	/* enable/disable crypto algorithm */
-	if(parent.lyra_hide_support)
-		inputCtrl(document.form.wl_crypto, 0);
-	else if(mode == "wpa" || mode == "wpa2" || mode == "wpawpa2" || mode == "psk" || mode == "psk2" || mode == "pskpsk2")
+	if(mode == "wpa" || mode == "wpa2" || mode == "wpawpa2" || mode == "psk" || mode == "psk2" || mode == "sae" || mode == "pskpsk2" || mode == "psk2sae")
 		inputCtrl(document.form.wl_crypto, 1);
 	else
 		inputCtrl(document.form.wl_crypto, 0);
 	
 	/* enable/disable psk passphrase */
-	if(mode == "psk" || mode == "psk2" || mode == "pskpsk2")
+	if(mode == "psk" || mode == "psk2" || mode == "sae" || mode == "pskpsk2" || mode == "psk2sae")
 		inputCtrl(document.form.wl_wpa_psk, 1);
 	else
 		inputCtrl(document.form.wl_wpa_psk, 0);
@@ -466,11 +500,11 @@ function change_wpa_type(mode){
 		}
 	
 	/* Reconstruct algorithm array from new crypto algorithms */
-	if(mode == "psk" || mode == "psk2" || mode == "pskpsk2" || mode == "wpa" || mode == "wpa2" || mode == "wpawpa2"){
+	if(mode == "psk" || mode == "psk2" || mode == "sae" || mode == "pskpsk2" || mode == "psk2sae" || mode == "wpa" || mode == "wpa2" || mode == "wpawpa2"){
 		/* Save current crypto algorithm */
 			if(opts[opts.selectedIndex].text == "WPA-Personal" || opts[opts.selectedIndex].text == "WPA-Enterprise")
 				new_array = new Array("TKIP");
-			else if(opts[opts.selectedIndex].text == "WPA2-Personal" || opts[opts.selectedIndex].text == "WPA2-Enterprise")
+			else if(opts[opts.selectedIndex].text == "WPA2-Personal" || opts[opts.selectedIndex].text == "WPA3-Personal" || opts[opts.selectedIndex].text == "WPA2/WPA3-Personal" || opts[opts.selectedIndex].text == "WPA2-Enterprise")
 				new_array = new Array("AES");
 			else
 				new_array = new Array("AES", "TKIP+AES");
@@ -685,7 +719,7 @@ function submitForm(){
 	document.form.current_page.value = '/';
 	document.form.next_page.value = '/';
 	
-	if(auth_mode == "psk" || auth_mode == "psk2" || auth_mode == "pskpsk2"){
+	if(auth_mode == "psk" || auth_mode == "psk2" || auth_mode == "sae" || auth_mode == "pskpsk2" || auth_mode == "psk2sae"){
 		if(is_KR_sku){
 			if(!parent.validator.psk_KR(document.form.wl_wpa_psk))
 				return false;
@@ -723,7 +757,14 @@ function submitForm(){
 	}
 	document.form.wsc_config_state.value = "1";
 
-	if(parent.amesh_support && (parent.isSwMode("rt") || parent.isSwMode("ap"))) {
+	if(auth_mode == 'sae'){
+		document.form.wl_mfp.value = '2';
+	}
+	else if(auth_mode == 'psk' || auth_mode == 'psk2' || auth_mode == 'pskpsk2' || auth_mode == 'psk2sae' || auth_mode == 'wpa' || auth_mode == 'wpa2' || auth_mode == 'wpawpa2'){
+		document.form.wl_mfp.value = '1';
+	}
+
+	if(parent.amesh_support && (parent.isSwMode("rt") || parent.isSwMode("ap")) && parent.ameshRouter_support) {
 		if(!check_wl_auth_support(auth_mode, $("select[name=wl_auth_mode_x] option:selected")))
 			return false;
 		else {
@@ -740,6 +781,32 @@ function submitForm(){
 			if(!AiMesh_confirm_msg("Wireless_SSID_PSK", wl_parameter))
 				return false;
 		}
+	}
+
+	if(isSupport("triband") && dwb_info.mode) {
+		var jsonPara = {};
+		jsonPara["edit_wl_unit"] = wl_unit;
+		jsonPara["edit_wl_ssid"] = document.form.wl_ssid.value;
+		jsonPara["dwb_unit"] = dwb_info.band;
+		jsonPara["smart_connect"] = document.form.smart_connect_x.value;
+		var ssid_array = [];
+		ssid_array.push(httpApi.nvramGet(["wl0_ssid"]).wl0_ssid);
+		if(wl_info.band5g_support)
+			ssid_array.push(httpApi.nvramGet(["wl1_ssid"]).wl1_ssid);
+		if(wl_info.band5g_2_support)
+			ssid_array.push(httpApi.nvramGet(["wl2_ssid"]).wl2_ssid);
+		jsonPara["current_ssid"] = ssid_array;
+		if(!validator.dwb_check_wl_setting(jsonPara)) {
+			alert("The fronthaul SSID is the same as the backhaul SSID.");/* untranslated */
+			return false;
+		}
+	}
+
+	if (Qcawifi_support) {
+		document.form.action_wait.value = "30";
+	}
+	else if (Rawifi_support) {
+		document.form.action_wait.value = "20";
 	}
 
 	parent.showLoading();
@@ -781,16 +848,22 @@ function manualSetup(){
 function tab_reset(v){
 	var tab_array1 = document.getElementsByClassName("tab_NW");
 	var tab_array2 = document.getElementsByClassName("tabclick_NW");
-
 	var tab_width = Math.floor(270/(parent.wl_info.wl_if_total+1));
+
+	/*if (Bcmwifi_support && band5g_11ax_support) {
+		tab_width = "60";
+	}*/
+
 	var i = 0;
+
 	while(i < tab_array1.length){
-		tab_array1[i].style.width=tab_width+'px';
+		tab_array1[i].style.width = tab_width + 'px';
 		tab_array1[i].style.display = "";
-	i++;
+		i++;
 	}
+
 	if(typeof tab_array2[0] != "undefined"){
-		tab_array2[0].style.width=tab_width+'px';
+		tab_array2[0].style.width = tab_width + 'px';
 		tab_array2[0].style.display = "";
 	}
 	if(v == 0){
@@ -807,15 +880,25 @@ function tab_reset(v){
 			document.getElementById("t3").style.display = "none";
 		}
 	}else if(v == 1){	//Smart Connect
-		if(parent.wl_info.band2g_support && parent.wl_info.band5g_support && parent.wl_info.band5g_2_support)
-			document.getElementById("span0").innerHTML = "2.4GHz, 5GHz-1 and 5GHz-2";
-		else if(parent.wl_info.band2g_support && parent.wl_info.band5g_support)
-			document.getElementById("span0").innerHTML = "2.4GHz and 5GHz";
-		
-		document.getElementById("t1").style.display = "none";
-		document.getElementById("t2").style.display = "none";				
-		document.getElementById("t3").style.display = "none";
-		document.getElementById("t0").style.width = (tab_width*parent.wl_info.wl_if_total+10) +'px';
+		if(isSupport("triband") && dwb_info.mode) {
+			document.getElementById("span0").innerHTML = "2.4GHz and 5GHz-1";
+			document.getElementById("span0").style.padding = "5px 0px 0px 8px";
+			document.getElementById("span2").innerHTML = "5GHz-2";
+			document.getElementById("t0").style.width = "142px";
+			document.getElementById("t1").style.display = "none";
+			document.getElementById("t3").style.display = "none";
+		}
+		else {
+			if(parent.wl_info.band2g_support && parent.wl_info.band5g_support && parent.wl_info.band5g_2_support)
+				document.getElementById("span0").innerHTML = "2.4GHz, 5GHz-1 and 5GHz-2";
+			else if(parent.wl_info.band2g_support && parent.wl_info.band5g_support)
+				document.getElementById("span0").innerHTML = "2.4GHz and 5GHz";
+
+			document.getElementById("t1").style.display = "none";
+			document.getElementById("t2").style.display = "none";
+			document.getElementById("t3").style.display = "none";
+			document.getElementById("t0").style.width = (tab_width*parent.wl_info.wl_if_total+10) +'px';
+		}
 	}
 	else if(v == 2){ //5GHz Smart Connect
 		document.getElementById("span0").innerHTML = "2.4GHz";
@@ -836,10 +919,22 @@ function change_smart_connect(v){
 				tab_reset(0);	
 				break;
 		case '1': 
-				if(wl_unit != '0')
-					tabclickhandler(0);
-				else
-					tab_reset(1);
+				if(isSupport("triband") && dwb_info.mode) {
+					if(wl_unit == dwb_info.band)
+						tab_reset(1);
+					else {
+						if(wl_unit != '0')
+							tabclickhandler(0);
+						else
+							tab_reset(1);
+					}
+				}
+				else {
+					if(wl_unit != '0')
+						tabclickhandler(0);
+					else
+						tab_reset(1);
+				}
 				break;
 		case '2': 
 				if(!(wl_unit == '0' || wl_unit == '1'))
@@ -900,35 +995,41 @@ function checkWLReady(){
 <input type="hidden" name="wl_nmode_x" value="<% nvram_get("wl_nmode_x"); %>"><!--Lock Add 20091210 for n only-->
 <input type="hidden" name="wps_band" value="<% nvram_get("wps_band_x"); %>">
 <input type="hidden" name="wl_unit" value="<% nvram_get("wl_unit"); %>">
+<input type="hidden" name="wl_mfp" value="<% nvram_get("wl_mfp"); %>">
 <input type="hidden" name="wl_subunit" value="-1">
 <input type="hidden" name="smart_connect_x" value="<% nvram_get("smart_connect_x"); %>">
-
 <table width="100%" border="0" cellpadding="0" cellspacing="0" id="rt_table">
 <tr>
 	<td>		
 		<table width="100px" border="0" align="left" style="margin-left:8px;" cellpadding="0" cellspacing="0">
 			<td>
-				<div id="t0" class="tab_NW" align="center" style="font-weight: bolder;display:none; margin-right:2px; width:90px;" onclick="tabclickhandler(0)">
+				<div id="t0" class="tab_NW" align="center" style="font-weight: bolder;display:none; margin-right:2px;" onclick="tabclickhandler(0)">
 					<span id="span0" style="cursor:pointer;font-weight: bolder;">2.4GHz</span>
 				</div>
 			</td>
 			<td>
-				<div id="t1" class="tab_NW" align="center" style="font-weight: bolder;display:none; margin-right:2px; width:90px;" onclick="tabclickhandler(1)">
+				<div id="t1" class="tab_NW" align="center" style="font-weight: bolder;display:none; margin-right:2px;" onclick="tabclickhandler(1)">
 					<span id="span1" style="cursor:pointer;font-weight: bolder;">5GHz</span>
 				</div>
 			</td>
 			<td>
-				<div id="t2" class="tab_NW" align="center" style="font-weight: bolder;display:none; margin-right:2px; width:90px;" onclick="tabclickhandler(2)">
+				<div id="t2" class="tab_NW" align="center" style="font-weight: bolder;display:none; margin-right:2px;" onclick="tabclickhandler(2)">
 					<span id="span2" style="cursor:pointer;font-weight: bolder;">5GHz-2</span>
 				</div>
 			</td>
 			<td>
-				<div id="t3" class="tab_NW" align="center" style="font-weight: bolder;display:none; margin-right:2px; width:90px;" onclick="tabclickhandler(3)">
+				<div id="t3" class="tab_NW" align="center" style="font-weight: bolder;display:none; margin-right:2px;" onclick="tabclickhandler(3)">
 					<span id="span3" style="cursor:pointer;font-weight: bolder;">60GHz</span>
 				</div>
 			</td>
+			<!--td>
+				<div id="t_compatibility" class="tab_NW" align="center" style="font-weight: bolder; margin-right:2px;"
+				 onclick="tabclickhandler('compatibility')">
+					<span style="cursor:pointer;font-weight: bolder;">Compatibility</span>
+				</div>
+			</td-->
 			<td>
-				<div id="t_status" class="tab_NW" align="center" style="font-weight: bolder; margin-right:2px; width:90px;" onclick="tabclickhandler('status')">
+				<div id="t_status" class="tab_NW" align="center" style="font-weight: bolder; margin-right:2px;" onclick="tabclickhandler('status')">
 					<span id="span_status" style="cursor:pointer;font-weight: bolder;"><#Status_Str#></span>
 				</div>
 			</td>
@@ -936,7 +1037,7 @@ function checkWLReady(){
 	</td>
 </tr>
 
-<tr>
+<tr id="tr_wl_info">
 	<td>
 		<table width="95%" border="1" align="center" cellpadding="4" cellspacing="0" class="table1px" id="WLnetworkmap_re" style="display:none">
 		  <tr>
@@ -995,7 +1096,9 @@ function checkWLReady(){
 							<option value="shared"  <% nvram_match("wl_auth_mode_x", "shared", "selected"); %>>Shared Key</option>
 							<option value="psk"     <% nvram_match("wl_auth_mode_x", "psk",    "selected"); %>>WPA-Personal</option>
 							<option value="psk2"    <% nvram_match("wl_auth_mode_x", "psk2",   "selected"); %>>WPA2-Personal</option>
+							<option value="sae"    <% nvram_match("wl_auth_mode_x", "sae",   "selected"); %>>WPA3-Personal</option>
 							<option value="pskpsk2" <% nvram_match("wl_auth_mode_x", "pskpsk2","selected"); %>>WPA-Auto-Personal</option>
+							<option value="psk2sae" <% nvram_match("wl_auth_mode_x", "psk2sae","selected"); %>>WPA2/WPA3-Personal</option>
 							<option value="wpa"     <% nvram_match("wl_auth_mode_x", "wpa",    "selected"); %>>WPA-Enterprise</option>
 							<option value="wpa2"    <% nvram_match("wl_auth_mode_x", "wpa2",   "selected"); %>>WPA2-Enterprise</option>
 							<option value="wpawpa2" <% nvram_match("wl_auth_mode_x", "wpawpa2","selected"); %>>WPA-Auto-Enterprise</option>
@@ -1067,13 +1170,18 @@ function checkWLReady(){
 					<input id="applySecurity" type="button" class="button_gen" value="<#CTL_apply#>" onclick="submitForm();" >
     			</td>
   		</tr>
+		<tr id="tr_dwb_info" style="display:none;">
+			<td style="padding:5px 10px 5px 10px;border-bottom:5px #000 solid;">
+				<div class="dwb_hint" ></div>
+			</td>
+		</tr>
 		<tr id="led_tr" style="display:none">
 			<td>
 				<div>
 					<table>
 						<tr>
 							<td>
-								<div style="font-family: Arial, Helvetica, sans-serif;font-weight: bolder;">LED Brightness</div>
+								<div style="font-family: Arial, Helvetica, sans-serif;font-weight: bolder;"><#LED_Brightness#></div>
 							</td>
 						</tr>
 						<tr>

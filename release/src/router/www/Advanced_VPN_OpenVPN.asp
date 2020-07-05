@@ -178,17 +178,17 @@ function initial(){
 	$('#divSwitchMenu').html(gen_switch_menu(vpn_server_array, "OpenVPN"));
 
 	//check DUT is belong to private IP.
-	setTimeout("show_warning_message();", 100);
+	setTimeout("show_warning_message();", 1000);
 
 	//set FAQ URL
 	//	https://www.asus.com/support/FAQ/1004469
-	httpApi.faqURL("faq_windows", "1004469", "https://www.asus.com", "/support/FAQ/");
+	httpApi.faqURL("1004469", function(url){document.getElementById("faq_windows").href=url;});
 	//	https://www.asus.com/support/FAQ/1004472
-	httpApi.faqURL("faq_macOS", "1004472", "https://www.asus.com", "/support/FAQ/");
+	httpApi.faqURL("1004472", function(url){document.getElementById("faq_macOS").href=url;});
 	//	https://www.asus.com/support/FAQ/1004471
-	httpApi.faqURL("faq_iPhone", "1004471", "https://www.asus.com", "/support/FAQ/");
+	httpApi.faqURL("1004471", function(url){document.getElementById("faq_iPhone").href=url;});
 	//	https://www.asus.com/support/FAQ/1004466
-	httpApi.faqURL("faq_android", "1004466", "https://www.asus.com", "/support/FAQ/");
+	httpApi.faqURL("1004466", function(url){document.getElementById("faq_android").href=url;});
 
 	var cust2 = document.form.vpn_server_cust2.value;
 	if (isSupport("hnd")) {
@@ -220,24 +220,24 @@ function show_warning_message(){
 			if(validator.isPrivateIP(wanlink_ipaddr())){
 				document.getElementById("privateIP_notes").innerHTML = "<#vpn_privateIP_hint#>";
 				document.getElementById("privateIP_notes").style.display = "";
-				//      http://www.asus.com/support/FAQ/1033906
-				httpApi.faqURL("faq_port_forwarding", "1033906", "https://www.asus.com", "/support/FAQ/");      //this id is include in string : #vpn_privateIP_hint#
+				//      https://www.asus.com/support/FAQ/1033906
+				httpApi.faqURL("1033906", function(url){document.getElementById("faq_port_forwarding").href=url;});      //this id is include in string : #vpn_privateIP_hint#
 			}
 		}
 		else{
 			if(!external_ip){
 				document.getElementById("privateIP_notes").innerHTML = "<#vpn_privateIP_hint#>";
 				document.getElementById("privateIP_notes").style.display = "";
-				//      http://www.asus.com/support/FAQ/1033906
-				httpApi.faqURL("faq_port_forwarding", "1033906", "https://www.asus.com", "/support/FAQ/");      //this id is include in string : #vpn_privateIP_hint#
+				//      https://www.asus.com/support/FAQ/1033906
+				httpApi.faqURL("1033906", function(url){document.getElementById("faq_port_forwarding").href=url;});	//this id is include in string : #vpn_privateIP_hint#
 			}
 		}
 	}
 	else if(validator.isPrivateIP(wanlink_ipaddr())){
 		document.getElementById("privateIP_notes").innerHTML = "<#vpn_privateIP_hint#>";
 		document.getElementById("privateIP_notes").style.display = "";
-		//      http://www.asus.com/support/FAQ/1033906
-		httpApi.faqURL("faq_port_forwarding", "1033906", "https://www.asus.com", "/support/FAQ/");      //this id is include in string : #vpn_privateIP_hint#
+		//      https://www.asus.com/support/FAQ/1033906
+		httpApi.faqURL("1033906", function(url){document.getElementById("faq_port_forwarding").href=url;});	//this id is include in string : #vpn_privateIP_hint#
 	}
 }
 
@@ -791,7 +791,7 @@ function update_vpn_server_state() {
 				document.getElementById('openvpn_error_message').innerHTML = "<span><#vpn_openvpn_fail1#></span>";
 				document.getElementById('openvpn_error_message').style.display = "";
 			}
-			else if(vpnd_state != '2' && vpnd_errno == '4'){
+			else if(vpnd_state != '2' && (vpnd_errno == '4' || vpnd_errno == '7')){
 				document.getElementById('openvpn_initial').style.display = "none";
 				document.getElementById('openvpn_error_message').innerHTML = "<span><#vpn_openvpn_fail2#></span>";
 				document.getElementById('openvpn_error_message').style.display = "";
@@ -1200,7 +1200,7 @@ function callback_upload_cert(_flag) {
 	if(_flag) {
 		var waiting_time = parseInt(document.form.action_wait.value);
 		showLoading(waiting_time);
-		setTimeout(function(){location.reload();}, waiting_time*1000);
+		setTimeout(function(){location.href= location.href}, waiting_time*1000);
 	}
 	else {
 		alert("<#SET_fail_desc#>");
@@ -1210,7 +1210,7 @@ function callback_upload_cert(_flag) {
 
 </script>
 </head>
-<body onload="initial();">
+<body onload="initial();" class="bg">
 <div id="tlsKey_panel"  class="contentM_qis">
 	<!--===================================Beginning of tls Content===========================================-->
 	<table class="QISform_wireless" border=0 align="center" cellpadding="5" cellspacing="0">
@@ -1443,13 +1443,13 @@ function callback_upload_cert(_flag) {
 										</div>
 										<div id="openvpn_error_message" style="display:none;margin-left:5px;"></div>
 										<tr id="openvpn_export_cert" style="display:none;">
-											<th><a class="hintstyle" href="javascript:void(0);" onClick="openHint(32,27);">Export Current Certification<!--untranslated--></a></th>
+											<th><a class="hintstyle" href="javascript:void(0);" onClick="openHint(32,27);"><#vpn_export_cert#></a></th>
 											<td>
 												<input id="exportCertToLocal" class="button_gen" type="button" value="<#btn_Export#>" onClick="exportCert();"/>
 											</td>
 										</tr>
 										<tr id="openvpn_import_cert" style="display:none;">
-											<th><a class="hintstyle" href="javascript:void(0);" onClick="openHint(32,28);">Import Original Certification<!--untranslated--></a></th>
+											<th><a class="hintstyle" href="javascript:void(0);" onClick="openHint(32,28);"><#vpn_import_cert#></a></th>
 											<td>
 												<input class="button_gen" type="button" value="<#CTL_upload#>" onClick="selectImportFile();"/>
 											</td>

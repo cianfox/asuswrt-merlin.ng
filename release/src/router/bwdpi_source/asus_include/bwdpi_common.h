@@ -21,6 +21,7 @@
 #define BWDPI_MON_DEBUG         "/tmp/BWMON_DEBUG"
 #define BWDPI_MON_DELOG         "/tmp/BWMON_LOG"
 #define BWDPI_SUP_DEBUG         "/tmp/BWSUP_DEBUG"
+#define BWDPI_WBL_DEBUG         "/tmp/WRS_WBL_DEBUG"
 
 /* DEBUG FUNCTION */
 #define BWDPI_DBG(fmt,args...) \
@@ -62,6 +63,11 @@
 		dbg("[BWSUP][%s:(%d)]"fmt, __FUNCTION__, __LINE__, ##args); \
 	}
 
+#define WBL_DBG(fmt,args...) \
+	if(f_exists(BWDPI_WBL_DEBUG) > 0) { \
+		printf("[WBL][%s:(%d)]"fmt, __FUNCTION__, __LINE__, ##args); \
+	}
+
 // folder path
 #define TMP_BWDPI       nvram_get_int("bwdpi_debug_path") ? "/jffs/TM/" : "/tmp/bwdpi/"
 
@@ -80,6 +86,13 @@
 #define DPI_VER         "/proc/ips_info"
 #define WAN_TMP         "/tmp/bwdpi/dev_wan"
 #define QOS_TMP         "/tmp/bwdpi/qos_rul"
+
+// node
+#if defined(RTCONFIG_HND_ROUTER_AX)
+#define DEVNODE         "/dev/idp"
+#else
+#define DEVNODE         "/dev/detector"
+#endif
 
 // database hidden path and function path
 #define BWDPI_DB_DIR    "/jffs/.sys"
@@ -117,8 +130,8 @@ extern void setup_vp_conf();
 
 //stat.c
 extern int stat_main(char *mode, char *name, char *dura, char *date);
-extern int device_main(char *MAC);
-extern int device_info_main(char *MAC);
+extern int device_main();
+extern int device_info_main(char *MAC, char *ipaddr);
 extern int wrs_url_main();
 extern int get_anomaly_main(char *cmd);
 extern int get_app_patrol_main();
@@ -131,6 +144,7 @@ extern void run_dpi_engine_service();
 extern void start_dpi_engine_service();
 extern void save_version_of_bwdpi();
 extern void setup_dpi_conf_bit(int input);
+extern void start_wrs_wbl_service();
 
 //wrs_app.c
 extern int wrs_app_main(char *cmd);
@@ -148,3 +162,15 @@ extern void tm_eula_check();
 
 //dpi_support.c
 extern int dump_dpi_support(int index);
+extern void setup_dpi_support_bitmap();
+
+// wrs_wbl.c
+extern int WRS_WBL_GET_PATH(int bflag, char *mac, char *path, int len);
+extern int WRS_WBL_WRITE_LIST(int bflag, char *mac, char *input_type, char *input);
+extern int WRS_WBL_DEL_LIST(int bflag, char *mac, char *input_type, char *input);
+extern void WRS_WBL_READ_LIST(int bflag, char *mac, FILE *file);
+extern int wrs_wbl_main(char *action, int type, char *mac, char *input_type, char *input);
+extern int wbl_setup_global_rule(char *mac);
+extern int wbl_setup_mac_rule(char *mac);
+extern int clean_wbl_conf();
+extern int setup_wbl_conf(int type, char *mac);

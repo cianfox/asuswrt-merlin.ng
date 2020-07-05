@@ -246,15 +246,12 @@ int _eval(char *const argv[], const char *path, int timeout, int *ppid)
 	sighandler_t chld = SIG_IGN;
 	pid_t pid, w;
 	int status = 0;
-	int fd;
-	int flags;
-	int sig;
-	int n;
-	const char *p;
-	char s[256];
-	int debug_logeval = atoi(nvram_safe_get("debug_logeval"));
-	//char *cpu0_argv[32] = { "taskset", "-c", "0"};
-	//char *cpu1_argv[32] = { "taskset", "-c", "1"};
+	int fd, flags, sig, n;
+	char s[256], *p;
+#if 0
+	char *cpu = "0";
+	char *cpu_argv[32] = { "taskset", "-c", cpu, NULL};
+#endif
 
 	if (!ppid) {
 		// block SIGCHLD
@@ -268,7 +265,9 @@ int _eval(char *const argv[], const char *path, int timeout, int *ppid)
 #ifdef HND_ROUTER
 	p = nvram_safe_get("env_path");
 	snprintf(s, sizeof(s), "%s%s/sbin:/bin:/usr/sbin:/usr/bin:/opt/sbin:/opt/bin", *p ? p : "", *p ? ":" : "");
-	setenv("PATH", s, 1);
+	p = getenv("PATH");
+	if (p == NULL || strcmp(p, s) != 0)
+		setenv("PATH", s, 1);
 #endif
 	pid = fork();
 	if (pid == -1) {
@@ -304,43 +303,22 @@ EXIT:
 
 	// child
 
+	setsid();
+
 	// reset signal handlers
-	for (sig = 0; sig < (_NSIG - 1); sig++)
+	for (sig = 1; sig < _NSIG; sig++)
 		signal(sig, SIG_DFL);
 
 	// unblock signals if called from signal handler
 	sigemptyset(&set);
 	sigprocmask(SIG_SETMASK, &set, NULL);
 
-	setsid();
-
-	close(STDIN_FILENO);
-	close(STDOUT_FILENO);
-	close(STDERR_FILENO);
-	open("/dev/null", O_RDONLY);
-	open("/dev/null", O_WRONLY);
-	open("/dev/null", O_WRONLY);
-
-	if (debug_logeval == 1) {
-		pid = getpid();
-
-		cprintf("_eval +%ld pid=%d ", uptime(), pid);
-		for (n = 0; argv[n]; ++n) cprintf("%s ", argv[n]);
-		cprintf("\n");
-
-		if ((fd = open("/dev/console", O_RDWR | O_NONBLOCK)) >= 0) {
-			dup2(fd, STDIN_FILENO);
-			dup2(fd, STDOUT_FILENO);
-			dup2(fd, STDERR_FILENO);
-		}
-		else {
-			sprintf(s, "/tmp/eval.%d", pid);
-			if ((fd = open(s, O_CREAT | O_RDWR | O_NONBLOCK, 0600)) >= 0) {
-				dup2(fd, STDOUT_FILENO);
-				dup2(fd, STDERR_FILENO);
-			}
-		}
-		if (fd > STDERR_FILENO) close(fd);
+	if ((fd = open("/dev/null", O_RDWR)) >= 0) {
+		dup2(fd, STDIN_FILENO);
+		dup2(fd, STDOUT_FILENO);
+		dup2(fd, STDERR_FILENO);
+		if (fd > STDERR_FILENO)
+			close(fd);
 	}
 
 	// Redirect stdout & stderr to <path>
@@ -361,11 +339,30 @@ EXIT:
 
 		if ((fd = open(path, flags, 0644)) < 0) {
 			perror(path);
-		}
-		else {
+		} else {
 			dup2(fd, STDOUT_FILENO);
 			dup2(fd, STDERR_FILENO);
-			close(fd);
+			if (fd > STDERR_FILENO)
+				close(fd);
+		}
+	} else if (nvram_get_int("debug_logeval")) {
+		pid = getpid();
+
+		if ((fd = open("/dev/console", O_RDWR | O_NONBLOCK)) < 0) {
+			sprintf(s, "/tmp/eval.%d", pid);
+			fd = open(s, O_CREAT | O_RDWR | O_NONBLOCK, 0600);
+		} else
+			dup2(fd, STDIN_FILENO);
+
+		if (fd >= 0) {
+			dup2(fd, STDOUT_FILENO);
+			dup2(fd, STDERR_FILENO);
+			if (fd > STDERR_FILENO)
+				close(fd);
+
+			printf("_eval +%ld pid=%d ", uptime(), getpid());
+			for (n = 0; argv[n]; n++) printf("%s ", argv[n]);
+			printf("\n");
 		}
 	}
 
@@ -373,28 +370,22 @@ EXIT:
 #ifndef HND_ROUTER
 	p = nvram_safe_get("env_path");
 	snprintf(s, sizeof(s), "%s%s/sbin:/bin:/usr/sbin:/usr/bin:/opt/sbin:/opt/bin", *p ? p : "", *p ? ":" : "");
-	setenv("PATH", s, 1);
+	p = getenv("PATH");
+	if (p == NULL || strcmp(p, s) != 0)
+		setenv("PATH", s, 1);
 #endif
 
 	alarm(timeout);
+
 #if 1
 	execvp(argv[0], argv);
+#else
+	for (n = 0; argv[n]; n++) {
+		cpu_argv[n+3] = argv[n];
+	execvp(cpu_argv[0], cpu_argv);
+#endif
 
 	perror(argv[0]);
-#elif 0
-	for(n = 0; argv[n]; ++n)
-		cpu0_argv[n+3] = argv[n];
-	execvp(cpu0_argv[0], cpu0_argv);
-
-	perror(cpu0_argv[0]);
-#else
-	for(n = 0; argv[n]; ++n)
-		cpu1_argv[n+3] = argv[n];
-	execvp(cpu1_argv[0], cpu1_argv);
-
-	perror(cpu1_argv[0]);
-
-#endif
 
 	_exit(errno);
 }
@@ -423,16 +414,16 @@ int _cpu_eval(int *ppid, char *cmds[])
 #if defined (SMP) || defined(RTCONFIG_ALPINE) || defined(RTCONFIG_LANTIQ)
         cpucmd[ncmds++]="taskset";
         cpucmd[ncmds++]="-c";
-        if(!strcmp(cmds[n], CPU0) || !strcmp(cmds[n], CPU1)) {
+	if(!strcmp(cmds[n], CPU0) || !strcmp(cmds[n], CPU1) || !strcmp(cmds[n], CPU2) || !strcmp(cmds[n], CPU3))
                 cpucmd[ncmds++]=cmds[n++];
-        } else
+        else
 #if defined(RTCONFIG_ALPINE) || defined(RTCONFIG_LANTIQ)
                 cpucmd[ncmds++]=cmds[n++];;
 #else
                 cpucmd[ncmds++]=CPU0;
 #endif
 #else
-        if(strcmp(cmds[n], CPU0) && strcmp(cmds[n], CPU1))
+	if(strcmp(cmds[n], CPU0) && strcmp(cmds[n], CPU1) && strcmp(cmds[n], CPU2) && strcmp(cmds[n], CPU3))
                 cpucmd[ncmds++]=cmds[n++];
         else
                 n++;
@@ -629,10 +620,6 @@ void cprintf(const char *format, ...)
 	FILE *f;
 	int nfd;
 	va_list args;
-#ifdef RTCONFIG_NVRAM_FILE
-	int debug_cprintf = 1;
-	int debug_cprintf_file = 0;
-#endif
 
 #if defined(DEBUG_NOISY) && !defined(HND_ROUTER)
 	{
@@ -645,29 +632,21 @@ void cprintf(const char *format, ...)
 		return;
 	{
 #else
-#ifdef RTCONFIG_NVRAM_FILE
-	if ( debug_cprintf == 1 ) {
-#else
 	if (nvram_match("debug_cprintf", "1")) {
 #endif
 #endif
-#endif
-		if((nfd = open("/dev/console", O_WRONLY | O_NONBLOCK)) > 0){
+		if((nfd = open("/dev/console", O_WRONLY | O_NONBLOCK)) >= 0){
 			if((f = fdopen(nfd, "w")) != NULL){
 				va_start(args, format);
 				vfprintf(f, format, args);
 				va_end(args);
 				fclose(f);
-			}
-			close(nfd);
+			} else
+				close(nfd);
 		}
 	}
 #if 1
-#ifdef RTCONFIG_NVRAM_FILE
-	if (debug_cprintf_file == 1) {
-#else
 	if (nvram_match("debug_cprintf_file", "1")) {
-#endif
 //		char s[32];
 //		sprintf(s, "/tmp/cprintf.%d", getpid());
 //		if ((f = fopen(s, "a")) != NULL) {
@@ -1062,26 +1041,28 @@ make_wl_prefix(char *prefix, int prefix_size, int mode, char *ifname)
  * locate the string "needle"
  */
 char *
-find_in_list(const char *haystack, const char *needle)
+_find_in_list(const char *haystack, const char *needle, char deli)
 {
 	const char *ptr = haystack;
 	int needle_len = 0;
 	int haystack_len = 0;
 	int len = 0;
+	char strde[2];
 
 	if (!haystack || !needle || !*haystack || !*needle)
 		return NULL;
 
+	sprintf(strde, "%c", deli);
 	needle_len = strlen(needle);
 	haystack_len = strlen(haystack);
 
 	while (*ptr != 0 && ptr < &haystack[haystack_len])
 	{
 		/* consume leading spaces */
-		ptr += strspn(ptr, " ");
+		ptr += strspn(ptr, strde);
 
 		/* what's the length of the next word */
-		len = strcspn(ptr, " ");
+		len = strcspn(ptr, strde);
 
 		if ((needle_len == len) && (!strncmp(needle, ptr, len)))
 			return (char*) ptr;
@@ -1091,6 +1072,12 @@ find_in_list(const char *haystack, const char *needle)
 	return NULL;
 }
 
+
+char *
+find_in_list(const char *haystack, const char *needle)
+{
+	return _find_in_list(haystack, needle, ' ');
+}
 
 /**
  *	remove_from_list
@@ -1103,19 +1090,17 @@ find_in_list(const char *haystack, const char *needle)
  *	@return	error code
  */
 int
-remove_from_list(const char *name, char *list, int listsize)
+_remove_from_list(const char *name, char *list, int listsize, char deli)
 {
-//	int listlen = 0;
 	int namelen = 0;
 	char *occurrence = list;
 
 	if (!list || !name || (listsize <= 0))
 		return EINVAL;
 
-//	listlen = strlen(list);
 	namelen = strlen(name);
 
-	occurrence = find_in_list(occurrence, name);
+	occurrence = _find_in_list(occurrence, name, deli);
 
 	if (!occurrence)
 		return EINVAL;
@@ -1128,13 +1113,20 @@ remove_from_list(const char *name, char *list, int listsize)
 			occurrence--;
 		occurrence[0] = 0;
 	}
-	else if (occurrence[namelen] == ' ')
+	else if (occurrence[namelen] == deli)
 	{
-		strncpy(occurrence, &occurrence[namelen+1 /* space */],
-		        strlen(&occurrence[namelen+1 /* space */]) +1 /* terminate */);
+		/* Using memmove because of possible overlapping source and destination buffers */
+		memmove(occurrence, &occurrence[namelen+1 /* space */],
+			strlen(&occurrence[namelen+1 /* space */]) +1 /* terminate */);
 	}
 
 	return 0;
+}
+
+int
+remove_from_list(const char *name, char *list, int listsize)
+{
+	return _remove_from_list(name, list, listsize, ' ');
 }
 
 /**
@@ -1155,6 +1147,7 @@ add_to_list(const char *name, char *list, int listsize)
 {
 	int listlen = 0;
 	int namelen = 0;
+	int newlen = 0;
 
 	if (!list || !name || (listsize <= 0))
 		return EINVAL;
@@ -1166,7 +1159,12 @@ add_to_list(const char *name, char *list, int listsize)
 	if (find_in_list(list, name))
 		return 0;
 
-	if (listsize <= listlen + namelen + 1 /* space */ + 1 /* NULL */)
+	newlen = listlen + namelen + 1 /* NULL */;
+	/* only add a space if the list isn't empty */
+	if (list[0] != 0)
+		newlen += 1; /* space */
+
+	if (listsize < newlen)
 		return EMSGSIZE;
 
 	/* add a space if the list isn't empty and it doesn't already have space */
@@ -1756,7 +1754,11 @@ int doSystem(char *fmt, ...)
 	va_end(vargs);
 
 	if(cmd) {
-		if (!strncmp(cmd, "iwpriv", 6))
+		if (!strncmp(cmd, "iwpriv", 6)
+#if defined(RTCONFIG_CFG80211)
+		    || !strncmp(cmd, "cfg80211tool", 12)
+#endif
+		   )
 			_dprintf("[doSystem] %s\n", cmd);
 		rc = system(cmd);
 		bfree(B_L, cmd);
@@ -2135,6 +2137,97 @@ sysfail:
  return NULL;
 }
 
+#if 0 // replaced by #define in shared.h
+int modprobe(const char *mod)
+{
+#if 1
+	return eval("modprobe", "-s", (char *)mod);
+#else
+	int r = eval("modprobe", "-s", (char *)mod);
+	cprintf("modprobe %s = %d\n", mod, r);
+	return r;
+#endif
+}
+#endif // 0
+
+int modprobe_r(const char *mod)
+{
+#if 1
+	return eval("modprobe", "-r", (char *)mod);
+#else
+	int r = eval("modprobe", "-r", (char *)mod);
+	cprintf("modprobe -r %s = %d\n", mod, r);
+	return r;
+#endif
+}
+
+/**
+ * Load kernel modules in @kmods_list in original order.
+ * @kmods_list:	a string contains all kernel modules should be loaded by this function.
+ * @return:
+ * 	0:	success
+ *     -1:	invalid parameter
+ */
+int load_kmods(char *kmods_list)
+{
+	char kmod[128], *next;
+
+	if (!kmods_list)
+		return -1;
+
+	foreach(kmod, kmods_list, next) {
+		if (module_loaded(kmod))
+			continue;
+
+		modprobe(kmod);
+	}
+
+	return 0;
+}
+
+/**
+ * Remove kernel modules in @kmods_list in REVERSE order.
+ * @kmods_list:	a string contains all kernel modules should be loaded by this function.
+ * @return:
+ * 	0:	success
+ *     -1:	invalid parameter
+ *     -2:	can't allocate memory for holding parameter.
+ */
+int remove_kmods(char *kmods_list)
+{
+	char buf[256], *p, *q;
+
+	if (!kmods_list)
+		return -1;
+
+	if (strlen(kmods_list) > sizeof(buf) - 1) {
+		p = strdup(kmods_list);
+		if (p == NULL) {
+			dbg("%s: Can't allocate memory for [%s]\n",
+				__func__, kmods_list);
+			return -2;
+		}
+	} else
+		p = strcpy(buf, kmods_list);
+
+	for (q = NULL; q != p;) {
+		q = strrchr(p, ' ') ? : p;
+		if (*q == ' ')
+			*q++ = '\0';
+		if (*q == '\0')
+			continue;
+		if (!module_loaded(q))
+			continue;
+
+		modprobe_r(q);
+	}
+
+	if (p != buf)
+		free(p);
+
+	return 0;
+}
+
 int num_of_wl_if()
 {
 	char word[256], *next;
@@ -2213,5 +2306,39 @@ void reset_stacksize(int newval)
 		printf("\nreset stack_size soft limit failed\n");
 	else
 		printf("\nreset stack_size soft limit as %d\n", newval);
+}
+
+#define ARP_CACHE       "/proc/net/arp"
+#define ARP_BUFFER_LEN  512
+#define IPLEN           16
+
+/* 1/4/6 */
+#define ARP_LINE_FORMAT "%20s %*s %*s %20s %*s %20s"
+
+int arpcache(char *tgmac, char *tgip)
+{
+	FILE *arpCache = fopen(ARP_CACHE, "r");
+	if (!arpCache) {
+		perror("cannot open arp cache");
+		return -1;
+	}
+
+	char header[ARP_BUFFER_LEN];
+	if (!fgets(header, sizeof(header), arpCache))
+	{
+		return -1;
+	}
+
+	char ipAddr[ARP_BUFFER_LEN], hwAddr[ARP_BUFFER_LEN], device[ARP_BUFFER_LEN];
+	while (fscanf(arpCache, ARP_LINE_FORMAT, ipAddr, hwAddr, device) == 3)
+	{
+		if(strncasecmp(tgmac, hwAddr, IPLEN-1) == 0) {
+			strlcpy(tgip, ipAddr, IPLEN);
+			break;
+		}
+	}
+
+	fclose(arpCache);
+	return 0;
 }
 

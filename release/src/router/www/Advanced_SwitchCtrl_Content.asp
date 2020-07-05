@@ -22,7 +22,7 @@ var lacp_support = isSupport("lacp");
 var lacp_enabled = '<% nvram_get("lacp_enabled"); %>' == 1 ?true: false;
 var bonding_policy_support = false;
 if( lacp_support 
-&& (based_modelid == "GT-AC5300" || based_modelid == "RT-AC86U" || based_modelid == "AC2900" || based_modelid == "RT-AC87U" || based_modelid == "RT-AC5300" || based_modelid == "RT-AC88U" || based_modelid == "RT-AC3100")){
+&& (based_modelid == "GT-AC5300" || based_modelid == "RT-AC86U" || based_modelid == "GT-AC2900" || based_modelid == "RT-AC87U" || based_modelid == "RT-AC5300" || based_modelid == "RT-AC88U" || based_modelid == "RT-AC3100")){
 	bonding_policy_support = true;
 	var bonding_policy_value = '<% nvram_get("bonding_policy"); %>';
 }
@@ -63,22 +63,38 @@ function initial(){
 		document.form.lacp_enabled.disabled = true;
 	}
 
-	//MODELDEP
-	if(based_modelid == "GT-AC5300"){
+	if(qca_support){
+		if(lyra_hide_support){
+			document.getElementById("jumbo_tr").style.display = "none";
+			document.form.jumbo_frame_enable.disabled = true;
+		}
+
 		document.getElementById("ctf_tr").style.display = "none";
-		var new_str = "";
-		new_str = document.getElementById("lacp_note").innerHTML.replace(/LAN1/g, "LAN5");
-		document.getElementById("lacp_note").innerHTML = new_str.replace(/LAN2/g, "LAN6");
+		document.form.ctf_disable_force.disabled = true;
+
+		if(wifison_ready != "1"){
+			document.getElementById("qca_tr").style.display = "";
+			document.form.qca_sfe.disabled = false;
+		}
 	}
-	else if(based_modelid == "RT-AC86U" || based_modelid == "AC2900"){
-		document.getElementById("ctf_tr").style.display = "none";
+	else{
+		//MODELDEP
+		if(based_modelid == "GT-AC5300"){
+			document.getElementById("ctf_tr").style.display = "none";
+			var new_str = "";
+			new_str = document.getElementById("lacp_note").innerHTML.replace(/LAN1/g, "LAN5");
+			document.getElementById("lacp_note").innerHTML = new_str.replace(/LAN2/g, "LAN6");
+		}
+		else if(based_modelid == "RT-AC86U" || based_modelid == "GT-AC2900" || based_modelid == "RT-AX88U" || based_modelid == "GT-AX11000" || based_modelid == "RT-AX92U"){
+			document.getElementById("ctf_tr").style.display = "none";
+		}
 	}
 
 	if(lacp_support && wans_dualwan_array.indexOf("lan") != -1){
 		var wan_lanport_text = "";
 		if(based_modelid == "GT-AC5300")
 			var bonding_port_settings = [{"val": "4", "text": "LAN5"}, {"val": "3", "text": "LAN6"}];
-		else if(based_modelid == "RT-AC86U")
+		else if(based_modelid == "RT-AC86U" || based_modelid == "GT-AC2900")
 			var bonding_port_settings = [{"val": "4", "text": "LAN1"}, {"val": "3", "text": "LAN2"}];
 		else
 			var bonding_port_settings = [{"val": "1", "text": "LAN1"}, {"val": "2", "text": "LAN2"}];
@@ -144,7 +160,7 @@ function applyRule(){
 
 function check_bonding_policy(obj){
 	if(obj.value == "1"){
-		if(based_modelid == "GT-AC5300" || based_modelid == "RT-AC86U"){
+		if(based_modelid == "GT-AC5300" || based_modelid == "RT-AC86U" || based_modelid == "GT-AC2900"){
 			document.getElementById("lacp_policy_tr").style.display = "";
 		}
 		
@@ -152,7 +168,7 @@ function check_bonding_policy(obj){
 		document.getElementById("lacp_desc").style.display = "";
 	}
 	else{
-		if(based_modelid == "GT-AC5300" || based_modelid == "RT-AC86U"){
+		if(based_modelid == "GT-AC5300" || based_modelid == "RT-AC86U" || based_modelid == "GT-AC2900"){
 			document.getElementById("lacp_policy_tr").style.display = "none";
 		}
 		
@@ -164,7 +180,7 @@ function check_bonding_policy(obj){
 </script>
 </head>
 
-<body onload="initial();" onunLoad="return unload_body();">
+<body onload="initial();" onunLoad="return unload_body();" class="bg">
 <div id="TopBanner"></div>
 <div id="hiddenMask" class="popup_bg">
 	<table cellpadding="5" cellspacing="0" id="dr_sweet_advise" class="dr_sweet_advise" align="center">
@@ -222,7 +238,7 @@ function check_bonding_policy(obj){
 		      							<div style="margin:10px 0 10px 5px;" class="splitLine"></div>
 										<div class="formfontdesc"><#SwitchCtrl_desc#></div>
 										<table width="100%" border="1" align="center" cellpadding="4" cellspacing="0" bordercolor="#6b8fa3"  class="FormTable">
-											<tr>
+											<tr id="jumbo_tr">
 												<th><#jumbo_frame#></th>
 												<td>
 													<select name="jumbo_frame_enable" class="input_option">
@@ -242,7 +258,17 @@ function check_bonding_policy(obj){
 													&nbsp
 													<span id="ctfLevelDesc"></span>
 												</td>
-											</tr>     
+											</tr>
+
+											<tr id="qca_tr" style="display: none;">
+											<th><a class="hintstyle" href="javascript:void(0);" onClick="openHint(29,2);"><#NAT_Acceleration#></a></th>
+												<td>
+													<select name="qca_sfe" class="input_option" disabled>
+													<option class="content_input_fd" value="0" <% nvram_match("qca_sfe", "0","selected"); %>><#WLANConfig11b_WirelessCtrl_buttonname#></option>
+													<option class="content_input_fd" value="1" <% nvram_match("qca_sfe", "1","selected"); %>><#WLANConfig11b_WirelessCtrl_button1name#></option>
+												</select>
+												</td>
+											</tr>
 
 											<tr style="display:none">
 												<th><#SwitchCtrl_Enable_GRO#></th>
@@ -273,12 +299,12 @@ function check_bonding_policy(obj){
 												</td>
 											</tr> 
 											<tr id="lacp_policy_tr" style="display:none">
-												<th>Bonding Policy</th>
+												<th><#SwitchCtrl_BondingPolicy#></th>
 												<td>
 													<select name="bonding_policy" class="input_option">
-														<option value="0">Default</option>
-														<option value="1">Source Bonding</option>
-														<option value="2">Destination Bonding</option>
+														<option value="0"><#CTL_Default#></option>
+														<option value="1"><#SwitchCtrl_BondingPolicy_src#></option>
+														<option value="2"><#SwitchCtrl_BondingPolicy_dest#></option>
 													</select>
 												</td>
 											</tr>

@@ -2802,7 +2802,7 @@ ej_wl_status_qtn_array(int eid, webs_t wp, int argc, char_t **argv, const char *
 				ipv6listptr = ipv6list;
 				foundipv6 = 0;
 				while ((ipv6listptr < ipv6list+strlen(ipv6list)-2) && (sscanf(ipv6listptr,"%*s %17s %40s", macentry, ipentry) == 2)) {
-					if (upper_strcmp(macentry,  wl_ether_etoa((struct ether_addr *) &sta_address)) == 0) {
+					if (strcasecmp(macentry,  wl_ether_etoa((struct ether_addr *) &sta_address)) == 0) {
 						ret += websWrite(wp, "\"%s\",", ipentry);
 						foundipv6 = 1;
 						break;
@@ -2820,7 +2820,10 @@ ej_wl_status_qtn_array(int eid, webs_t wp, int argc, char_t **argv, const char *
 			retval += websWrite(wp, "\"%d\",", rssi);
 			retval += websWrite(wp, "\"%d\",\"%d\",", tx_phy_rate, rx_phy_rate);
 			retval += websWrite(wp, "\"%3d:%02d:%02d\",", hr, min, sec);
-			retval += websWrite(wp, "\"A%s%s\",", !nvram_match("wl1_auth_mode_x", "open") ? "U" : "", (guest ? "G" : ""));
+			retval += websWrite(wp, "\"\",");	// NSS (not supported by QTN)
+			retval += websWrite(wp, "\"\",");	// PHY (not supported by QTN)
+			retval += websWrite(wp, "\"\",");	// BW (not supported by QTN)
+			retval += websWrite(wp, "\"A%s%s\",", !nvram_match("wl1_auth_mode_x", "open") ? "U" : "", (guest ? "1" : ""));
 			retval += websWrite(wp, "],");
 		}
 	}

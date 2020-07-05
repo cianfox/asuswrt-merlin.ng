@@ -24,7 +24,6 @@ ifeq ($(RTCONFIG_BCMWL6),y)
 CFLAGS += -I$(SRCBASE)/wl/exe/
 endif
 endif
-CFLAGS += -I$(TOP)/push_log
 CFLAGS += -DASUS_DDNS -DTRANSLATE_ON_FLY -DFLASH_EMULATOR -DLinux -DWSC 
 
 ifeq ($(RTCONFIG_NETOOL),y)
@@ -72,8 +71,12 @@ ifeq ($(RTN14U),y)
 CFLAGS += -DBAND_2G_ONLY
 endif
 
-ifeq ($(RTN14U)$(RTAC52U)$(RTAC51U)$(RTN11P)$(RTN300)$(RTN54U)$(RTAC1200HP)$(RTN56UB1)$(RTN56UB2)$(RTAC54U)$(RTAC1200)$(RTAC1200GA1)$(RTAC1200GU),y)
+ifeq ($(RTN14U)$(RTAC52U)$(RTAC51U)$(RTN11P)$(RTN300)$(RTN54U)$(RTAC1200HP)$(RTN56UB1)$(RTN56UB2)$(RTAC54U)$(RTAC1200)$(RTAC1200V2)$(RTAC1200GA1)$(RTAC1200GU),y)
 CFLAGS += -DRA_ESW
+endif
+
+ifeq ($(BUILD_NAME), RT-AC1200_V2)
+CFLAGS += -DRTAC1200V2
 endif
 
 ifeq ($(RTCONFIG_DNSMASQ),y)
@@ -101,9 +104,11 @@ ifeq ($(or $(RTAC68A),$(RT4GAC68U)),y)
 CFLAGS += -DRTAC68U
 endif
 
-OBJS = $(if $(wildcard httpd.c), httpd.o, prebuild/httpd.o)
-OBJS += cgi.o ej.o 
-OBJS += web.o common.o nvram_f.o 
+ifeq ($(RTCONFIG_CAPTCHA),y)
+CFLAGS += -DCAPTCHA
+endif
+OBJS += httpd.o cgi.o ej.o
+OBJS += web.o common.o nvram_f.o
 OBJS += aspbw.o initial_web_hook.o
 OBJS += apps.o
 OBJS += sysinfo.o data_arrays.o
@@ -146,6 +151,10 @@ endif
 
 ifeq ($(RTCONFIG_HTTPS),y)
 OBJS += pwenc.o
+endif
+
+ifeq ($(RTCONFIG_CAPTCHA),y)
+OBJS += libcaptcha.o
 endif
 
 OBJS += $(if $(wildcard web_hook.c), web_hook.o, prebuild/web_hook.o)
@@ -286,11 +295,21 @@ CFLAGS += -I$(TOP)/libqcsapi_client_10g
 LIBS += -L$(TOP)/libqcsapi_client_10g -lqcsapi_client
 endif
 
+ifeq ($(RTCONFIG_CONNDIAG),y)
+CFLAGS += -I$(TOP)/rc
+LIBS += -L$(TOP)/rc -lconn_diag
+endif
+
 CFLAGS += -I$(TOP)/libpasswd
 LIBS += -L$(TOP)/libpasswd -lpasswd
 
 ifeq ($(RTCONFIG_LANTIQ),y)
 LIBS += -L$(TOP)/fapi_wlan_common-05.04.00.131 -lfapiwlancommon -ldl -L$(TOP)/libhelper-1.4.0.2 -lhelper -L$(TOP)/libfapi-0.1 -lfapi -L$(TOP)/wireless_tools/ -liw
+endif
+
+ifeq ($(RTCONFIG_LIBASUSLOG),y)
+CFLAGS += -I$(TOP)/libasuslog
+LIBS += -L$(TOP)/libasuslog -lasuslog
 endif
 
 all: httpd #test_apps

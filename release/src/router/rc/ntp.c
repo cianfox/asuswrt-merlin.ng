@@ -40,7 +40,7 @@
 #define SECONDS_TO_WAIT 3
 #define NTP_RETRY_INTERVAL 30
 
-static char server[32];
+static char server[256];
 static int sig_cur = -1;
 static int server_idx = 0;
 
@@ -80,6 +80,9 @@ static void ntp_service()
 #endif
 #ifdef RTCONFIG_DISK_MONITOR
 		notify_rc("restart_diskmon");
+#endif
+#ifdef RTCONFIG_UUPLUGIN
+		exec_uu();
 #endif
 	}
 }
@@ -184,7 +187,7 @@ int ntp_main(int argc, char *argv[])
 		else if ((repeater_mode()
 #if defined(RTCONFIG_BCMWL6) && defined(RTCONFIG_PROXYSTA)
 				|| psr_mode() || mediabridge_mode()
-#elif defined(RTCONFIG_REALTEK)
+#elif defined(RTCONFIG_REALTEK) || defined(RTCONFIG_QCA)
 				|| mediabridge_mode()
 #endif
 #ifdef RTCONFIG_DPSTA

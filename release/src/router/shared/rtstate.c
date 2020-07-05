@@ -9,6 +9,17 @@
 #include <shutils.h>
 #include <shared.h>
 
+static char *wantype_str[] = {
+	[WANS_DUALWAN_IF_LAN] = "lan",
+	[WANS_DUALWAN_IF_2G] = "2g",
+	[WANS_DUALWAN_IF_5G] = "5g",
+	[WANS_DUALWAN_IF_USB] = "usb",
+	[WANS_DUALWAN_IF_DSL] = "dsl",
+	[WANS_DUALWAN_IF_WAN] = "wan",
+	[WANS_DUALWAN_IF_WAN2] = "wan2",
+	[WANS_DUALWAN_IF_USB2] = "usb2",
+	[WANS_DUALWAN_IF_SFPP] = "sfp+",
+};
 
 /* keyword for rc_support 	*/
 /* ipv6 mssid update parental 	*/
@@ -178,6 +189,15 @@ int is_phy_connect(int unit){
 			return 0;
 	}
 	else
+#ifdef RTCONFIG_USB_MODEM
+	if(dualwan_unit__usbif(unit))
+		return 1;
+	else
+#endif
+		return get_wanports_status(unit);
+}
+
+int is_phy_connect2(int unit){
 #ifdef RTCONFIG_USB_MODEM
 	if(dualwan_unit__usbif(unit))
 		return 1;
@@ -700,12 +720,12 @@ int get_usb_port_host(const char *usb_port)
 #endif
 #endif // RTCONFIG_USB
 
-#if defined(RTCONFIG_DUALWAN)
 void set_wanscap_support(char *feature)
 {
 	nvram_set("wans_cap", feature);
 }
 
+#if defined(RTCONFIG_DUALWAN)
 void add_wanscap_support(char *feature)
 {
 	char features[128];
@@ -745,6 +765,7 @@ int get_wans_dualwan(void)
 		if (!strcmp(word,"dsl")) caps |= WANSCAP_DSL;
 		if (!strcmp(word,"wan")) caps |= WANSCAP_WAN;
 		if (!strcmp(word,"wan2")) caps |= WANSCAP_WAN2;
+		if (!strcmp(word,"sfp+")) caps |= WANSCAP_SFPP;
 	}
 
 	return caps;
@@ -781,6 +802,7 @@ int get_dualwan_by_unit(int unit)
 #ifdef RTCONFIG_USB_MULTIMODEM
 			if (!strcmp(word,"usb2")) return WANS_DUALWAN_IF_USB2;
 #endif
+			if (!strcmp(word,"sfp+")) return WANS_DUALWAN_IF_SFPP;
 			return WANS_DUALWAN_IF_NONE;
 		}
 		i++;
@@ -799,6 +821,20 @@ int get_wanunit_by_type(int wan_type){
 	}
 
 	return WAN_UNIT_NONE;
+}
+
+/* Return wan type string of @unit wan_unit.
+ * @return:	pointer to a string.
+ *  NULL:	invalid parameter or unknown wan type.
+ */
+char *get_wantype_str_by_unit(int unit)
+{
+	int type = get_dualwan_by_unit(unit);
+
+	if (unit < 0 || unit > ARRAY_SIZE(wantype_str))
+		return NULL;
+
+	return wantype_str[type];
 }
 
 // imply: unit 0: primary, unit 1: secondary
@@ -937,6 +973,9 @@ void add_lan_phy(char *phy)
 		return;
 
 	ifnames = nvram_safe_get("lan_ifnames");
+	if(find_word(ifnames, phy) != NULL)
+		return;	/* exist */
+
 	snprintf(phys, sizeof(phys), "%s%s%s", ifnames,
 		(*ifnames && *phy) ? " " : "", phy);
 	nvram_set("lan_ifnames", phys);
@@ -955,6 +994,9 @@ void add_wan_phy(char *phy)
 		return;
 
 	ifnames = nvram_safe_get("wan_ifnames");
+	if(find_word(ifnames, phy) != NULL)
+		return;	/* exist */
+
 	snprintf(phys, sizeof(phys), "%s%s%s", ifnames,
 		(*ifnames && *phy) ? " " : "", phy);
 	nvram_set("wan_ifnames", phys);
@@ -1048,12 +1090,12 @@ char ssid2[64] = { 0 };
 char *get_default_ssid(int unit, int subunit)
 {
 	int rev3 = 0;
-	const int band_num = num_of_wl_if();
+	const int band_num __attribute__((unused)) = num_of_wl_if();
 	char ssidbase[16], *macp = NULL;
 	unsigned char mac_binary[6];
-	const char *post_5g = "-1", *post_5g2 = "-2", *post_guest = "_Guest";	/* postfix for RTCONFIG_NEWSSID_REV2 case */
+	const char *post_5g __attribute__((unused)) = "-1", *post_5g2 __attribute__((unused))= "-2", *post_guest = "_Guest";	/* postfix for RTCONFIG_NEWSSID_REV2 case */
 
-#ifdef RTCONFIG_NEWSSID_REV2
+#if defined(RTCONFIG_NEWSSID_REV2) || defined(RTCONFIG_NEWSSID_REV4)
 	rev3 = 1;
 #endif
 
@@ -1066,7 +1108,7 @@ char *get_default_ssid(int unit, int subunit)
 #ifdef GTAC5300
 	post_5g = "";
 	post_5g2 = "_Gaming";
-#elif !defined(RTCONFIG_NEWSSID_REV2) && !defined(RTCONFIG_SINGLE_SSID)
+#elif !defined(RTCONFIG_NEWSSID_REV2) && !defined(RTCONFIG_NEWSSID_REV4) && !defined(RTCONFIG_SINGLE_SSID)
 	post_5g = "";
 #endif
 
@@ -1082,6 +1124,11 @@ char *get_default_ssid(int unit, int subunit)
 	ether_atoe(macp, mac_binary);
 #if defined(RTCONFIG_SSID_AMAPS)
 	sprintf((char *)ssidbase, "%s_%02X_AMAPS", SSID_PREFIX, mac_binary[5]);
+#elif defined(VZWAC1300)
+	if (nvram_match("odmpid", "ASUSMESH-AC1300"))
+		sprintf((char *)ssidbase, "ASUS_%02X_MESH", mac_binary[5]);
+	else
+		sprintf((char *)ssidbase, "%s_%02X", SSID_PREFIX, mac_binary[5]);
 #else
 	sprintf((char *)ssidbase, "%s_%02X", SSID_PREFIX, mac_binary[5]);
 #endif /* RTCONFIG_SSID_AMAPS */
@@ -1096,6 +1143,8 @@ char *get_default_ssid(int unit, int subunit)
 #if defined(RTAC58U)
 		if (!strncmp(nvram_safe_get("territory_code"), "SP", 2))
 			sprintf((char *)ssidbase, "Spirit_%02X", mac_binary[5]);
+		else if (!strncmp(nvram_safe_get("territory_code"), "CX", 2))
+			sprintf((char *)ssidbase, "Stuff-Fibre_%02X", mac_binary[5]);
 		else
 #endif
 #ifdef RTAC68U
@@ -1112,10 +1161,16 @@ char *get_default_ssid(int unit, int subunit)
 #endif
 
 	strlcpy(ssid, ssidbase, sizeof(ssid));
+
+#ifdef RTCONFIG_NEWSSID_REV4
+	if (!subunit)
+		return ssid;
+#endif
+
 #if !defined(RTCONFIG_SINGLE_SSID)	/* including RTCONFIG_NEWSSID_REV2 */
 	switch (unit) {
 	case WL_2G_BAND:
-#if defined(RTCONFIG_NEWSSID_REV2)
+#if defined(RTCONFIG_NEWSSID_REV2) || defined(RTCONFIG_NEWSSID_REV4)
 		if ((band_num > 1)
 #ifdef RTAC68U
 			&& !is_dpsta_repeater()
@@ -1154,6 +1209,11 @@ char *get_default_ssid(int unit, int subunit)
 #if defined(RTCONFIG_SSID_AMAPS)
 		/* RTCONFIG_SSID_AMAPS use the same guest network SSID rule as SINGLE_SSID */
 		snprintf(ssid, sizeof(ssid), "%s_AMAPS_Guest", SSID_PREFIX);
+#elif defined(VZWAC1300)
+	if (nvram_match("odmpid", "ASUSMESH-AC1300"))
+		snprintf(ssid, sizeof(ssid), "ASUS_MESH_Guest");
+	else
+		strlcat(ssid, post_guest, sizeof(ssid));
 #else
 		strlcat(ssid, post_guest, sizeof(ssid));
 #endif

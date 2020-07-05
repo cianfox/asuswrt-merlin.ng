@@ -354,7 +354,7 @@ function update_visibility(){
 	nat = getRadioValue(document.form.vpn_client_nat);
 	hmac = document.form.vpn_client_hmac.value;
 	rgw = document.form.vpn_client_rgw.value;
-	tlsremote = getRadioValue(document.form.vpn_client_tlsremote);
+	tlsremote = document.form.vpn_client_tlsremote.value;
 	userauth = (getRadioValue(document.form.vpn_client_userauth) == 1) && (auth == 'tls') ? 1 : 0;
 	useronly = userauth && getRadioValue(document.form.vpn_client_useronly);
 	ncp = document.form.vpn_client_ncp_enable.value;
@@ -383,8 +383,8 @@ function update_visibility(){
 	showhide("vpn_client_gw", (iface == "tap" && rgw > 0));
 	showhide("client_tlsremote", (auth == "tls"));
 
-	showhide("vpn_client_cn", ((auth == "tls") && (tlsremote == 1)));
-	showhide("client_cn_label", ((auth == "tls") && (tlsremote == 1)));
+	showhide("vpn_client_cn", ((auth == "tls") && (tlsremote > 0)));
+	showhide("client_cn_label", ((auth == "tls") && (tlsremote > 0)));
 	showhide("clientlist_Block", (rgw >= 2));
 	showhide("selectiveTable", (rgw >= 2));
 	showhide("client_enforce", (rgw >= 2));
@@ -583,7 +583,9 @@ function applyRule(manual_switch){
 	for(i=0; i<rule_num; i++){
 		tmp_value += "<";
 		for(j=0; j<item_num-1; j++){
-			tmp_value += document.getElementById('clientlist_table').rows[i].cells[j].innerHTML;
+			var field = document.getElementById('clientlist_table').rows[i].cells[j].innerHTML;
+			if (field == "0.0.0.0") field = "";
+			tmp_value += field;
 			if(j != item_num-2)
 				tmp_value += ">";
 		}
@@ -732,6 +734,8 @@ function showclientlist(){
 			code +='<tr id="row'+i+'">';
 			var clientlist_col = clientlist_row[i].split('&#62');
 				for(var j = 0; j < clientlist_col.length; j++){
+					if ((j == 1 || j == 2) && clientlist_col[j] == "0.0.0.0")
+						clientlist_col[j] = "";
 					code +='<td width="' + width[j] +'">'+ clientlist_col[j] +'</td>';
 				}
 				if (j < 4) {
@@ -766,12 +770,6 @@ function addRow_Group(upper){
 
 	if (!validator.safeName(document.form.clientlist_deviceName))
 		return false;
-
-	if(document.form.clientlist_ipAddr.value=="")
-		document.form.clientlist_ipAddr.value="0.0.0.0";
-
-	if(document.form.clientlist_dstipAddr.value=="")
-		document.form.clientlist_dstipAddr.value="0.0.0.0";
 
 	if (!validator.ipv4cidr(document.form.clientlist_ipAddr)) {
 		document.form.clientlist_ipAddr.focus();
@@ -929,6 +927,9 @@ function showConnStatus() {
 				case "6":
 					code = "Error - Authentication failure!";
 					break;
+				case "7":
+					code = "Error - Key/Certificate error!";
+					break;
 				default:
 					code = "Error - check configuration!";
 					break;
@@ -960,7 +961,7 @@ function refreshVPNIP() {
 </script>
 </head>
 
-<body onload="initial();" onunLoad="return unload_body();">
+<body onload="initial();" onunLoad="return unload_body();" class="bg">
 	<div id="tlsKey_panel"  class="contentM_qis" style="box-shadow: 3px 3px 10px #000;">
 		<table class="QISform_wireless" border=0 align="center" cellpadding="5" cellspacing="0">
 			<tr>
@@ -1410,11 +1411,15 @@ function refreshVPNIP() {
 						</td>
 					</tr>
 					<tr id="client_tlsremote">
-						<th>Verify Server Certificate</th>
+						<th>Verify Server Certificate Name</th>
 						<td>
-							<input type="radio" name="vpn_client_tlsremote" class="input" onclick="update_visibility();" value="1" <% nvram_match_x("", "vpn_client_tlsremote", "1", "checked"); %>><#checkbox_Yes#>
-							<input type="radio" name="vpn_client_tlsremote" class="input" onclick="update_visibility();" value="0" <% nvram_match_x("", "vpn_client_tlsremote", "0", "checked"); %>><#checkbox_No#>
-							<label style="padding-left:3em;" id="client_cn_label">Common name:</label><input type="text" maxlength="255" class="input_25_table" id="vpn_client_cn" name="vpn_client_cn" value="<% nvram_get("vpn_client_cn"); %>">
+							<select name="vpn_client_tlsremote" class="input_option" onclick="update_visibility();">
+								<option value="0" <% nvram_match("vpn_client_tlsremote","0","selected"); %> >No</option>
+								<option value="1" <% nvram_match("vpn_client_tlsremote","1","selected"); %> >Common Name</option>
+								<option value="2" <% nvram_match("vpn_client_tlsremote","2","selected"); %> >Common Name Prefix</option>
+								<option value="3" <% nvram_match("vpn_client_tlsremote","3","selected"); %> >Subject</option>
+							</select>
+							<label style="padding-left:3em;" id="client_cn_label">Value:</label><input type="text" maxlength="255" class="input_22_table" id="vpn_client_cn" name="vpn_client_cn" value="<% nvram_get("vpn_client_cn"); %>">
 						</td>
 					</tr>
 					<tr>
