@@ -489,6 +489,21 @@ int ej_show_sysinfo(int eid, webs_t wp, int argc, char_t ** argv)
 #else	// HND lacks robocfg support
 			strcpy(result, "[]");
 #endif
+		} else if( strcmp(type,"usb2jffs.mount") == 0 ) {
+			FILE *fp;
+			char device[30], path[30];
+			sprintf(result, "%d", 0);
+			fp = fopen("/proc/mounts", "r");
+			if (fp) {
+				while(!feof(fp))  {
+					fscanf(fp, "%s %s", device, path);
+					if (strcmp(path, "/jffs") == 0 && strstr(device, "/dev/s")) {
+						sprintf(result, "%d", 1);
+						break;
+					}
+				}
+				fclose(fp);
+			}
 		} else {
 			strcpy(result,"Not implemented");
 		}
