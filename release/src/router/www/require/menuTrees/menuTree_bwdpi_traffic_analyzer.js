@@ -413,7 +413,7 @@ define(function(){
 					retArray.push("menu_OpenNAT");
 				}
 
-				if(!rog_support){
+				if(0){
 					for(i=0; i<menuTree.list.length; i++){
 						if(menuTree.list[i].menuName == '<#Game_Boost#>'){
 							menuTree.list[i].menuName = 'Game';
