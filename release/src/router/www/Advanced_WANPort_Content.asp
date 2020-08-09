@@ -110,13 +110,14 @@ var curState = (wans_dualwan_array[1] != "none")? "1":"0";
 var lacp_support = isSupport("lacp");
 var lacp_enabled = '<% nvram_get("lacp_enabled"); %>';
 var wans_lanport_orig = '<% nvram_get("wans_lanport"); %>';
+var modelname = '<% nvram_get("modelname"); %>';
 
 function initial(){
 	show_menu();
 	wans_flag = (wans_dualwan_orig.search("none") != -1 || !parent.dualWAN_support) ? 0 : 1;
 	wans_caps_primary = wans_caps;
 	wans_caps_secondary = wans_caps;
-	
+
 	addWANOption(document.form.wans_primary, wans_caps_primary.split(" "));
 	addWANOption(document.form.wans_second, wans_caps_secondary.split(" "));
 
@@ -156,6 +157,9 @@ function initial(){
 		document.form.wans_lanport2.remove(3);
 		document.form.wans_lanport2.remove(2);
 	}else if(based_modelid == "RT-AC95U"){
+		document.form.wans_lanport1.remove(3);
+		document.form.wans_lanport2.remove(3);
+	}else if(modelname == "K3"){
 		document.form.wans_lanport1.remove(3);
 		document.form.wans_lanport2.remove(3);
 	}
