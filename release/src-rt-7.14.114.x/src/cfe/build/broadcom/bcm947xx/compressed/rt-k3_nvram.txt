@@ -298,7 +298,7 @@ et0phyaddr=30
 # The value of 00:90:4C:12:2 is for a BCM94709r reference design.
 # The "maclo12" part is filled in by the nvserial program.
 #et0macaddr=00:90:4C:12:2${maclo12}
-et0macaddr=00:11:22:33:44:55
+et0macaddr=74:7D:24:AA:AF:B2
 
 # Enable telent at startup
 telnetd_startup=1
@@ -404,7 +404,7 @@ devpath1=pcie/1/1/
 1:boardflags4=0xe
 1:venid=0x14e4
 1:devid=0x43c4
-1:macaddr=00:11:22:33:44:66
+1:macaddr=74:7D:24:AA:AF:B3
 1:ccode=#a
 1:regrev=0
 1:aa2g=15
@@ -545,7 +545,7 @@ devpath2=pcie/2/1/
 2:boardflags4=0x000E
 2:venid=0x14e4
 2:devid=0x43c5
-2:macaddr=00:11:22:33:44:77
+2:macaddr=74:7D:24:AA:AF:B4
 2:ccode=#a
 2:regrev=0
 2:aa5g=15
